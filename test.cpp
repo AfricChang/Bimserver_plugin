@@ -47,6 +47,14 @@ struct Axis2Placement3D{
 	}
 };
 
+struct Plane{
+	Axis2Placement3D *Axis;
+
+	Plane(){
+		Axis = new Axis2Placement3D();
+	}
+};
+
 struct Axis2Placement2D{
 	Direction *direction1;
 	Direction *direction2;
@@ -176,12 +184,32 @@ struct Face{
 	}
 };
 
+struct OpenShell{
+	vector<Face *> faces;
+	string cubeindex;
+
+	OpenShell(){
+		faces.empty();
+		cubeindex = "";
+	}
+};
+
 struct ClosedShell{
 	vector<Face *> faces;
 	string cubeindex;
 
 	ClosedShell(){
 		faces.empty();
+		cubeindex = "";
+	}
+};
+
+struct ShellBasedSurfaceModel{
+	vector<OpenShell *> shells;
+	string cubeindex;
+
+	ShellBasedSurfaceModel(){
+		shells.empty();
 		cubeindex = "";
 	}
 };
@@ -245,7 +273,8 @@ struct ShapeRepresentation{
 	vector<AreaSolid *> aSolid;
 	PolyLine *pLine;
 	vector<FacetedBrep *> fBs;
-	int ShapeMod;	// 0 is AreSolid, 1 is pLine, 2 is FacetedBrep, 9 is unincluded Model
+	ShellBasedSurfaceModel *model;
+	int ShapeMod;	// 0 is AreSolid, 1 is pLine, 2 is FacetedBrep, 3 is ShellBasedSurfaceModel, 9 is unincluded Model
 
 	string cubeindex;
 
@@ -255,6 +284,7 @@ struct ShapeRepresentation{
 		GeometricMod = 0;
 		aSolid.empty();
 		pLine = new PolyLine;
+		model = new ShellBasedSurfaceModel;
 		fBs.empty();
 		ShapeMod = 0;
 		cubeindex = "";
@@ -267,6 +297,7 @@ struct store{
 	unordered_map<int, Direction *> IFCDIRECTION_hash;
 	unordered_map<int, CartesianPoint *> IFCCARTESIANPOINT_hash;
 	unordered_map<int, Axis2Placement3D *> IFCAXIS2PLACEMENT3D_hash;
+	unordered_map<int, Plane *> IFCPLANE_hash;
 	unordered_map<int, Axis2Placement2D *> IFCAXIS2PLACEMENT2D_hash;
 	unordered_map<int, LocalPlacement *> IFCLOCALPLACEMENT_hash;
 	unordered_map<int, PolyLine *> IFCPOLYLINE_hash;
@@ -277,7 +308,9 @@ struct store{
 	unordered_map<int, FaceBound *> IFCFACEBOUND_hash;
 	unordered_map<int, FaceOuterBound *> IFCFACEOUTERBOUND_hash;
 	unordered_map<int, Face *> IFCFACE_hash;
+	unordered_map<int, OpenShell *> IFCOPENSHELL_hash;
 	unordered_map<int, ClosedShell *> IFCCLOSEDSHELL_hash;
+	unordered_map<int, ShellBasedSurfaceModel *> IFCSHELLBASEDSURFACEMODEL_hash;
 	unordered_map<int, FacetedBrep *> IFCFACETEDBREP_hash;
 	unordered_map<int, AreaSolid *> IFCEXTRUDEDAREASOLID_hash;
 	unordered_map<int, GeometricRepresentationContext *> IFCGEOMETRICREPRESENTATIONCONTEXT_hash;
@@ -291,6 +324,7 @@ struct store{
 		IFCDIRECTION_hash.empty();
 		IFCCARTESIANPOINT_hash.empty();
 		IFCAXIS2PLACEMENT3D_hash.empty();
+		IFCPLANE_hash.empty();
 		IFCAXIS2PLACEMENT2D_hash.empty();
 		IFCLOCALPLACEMENT_hash.empty();
 		IFCPOLYLINE_hash.empty();
@@ -301,6 +335,7 @@ struct store{
 		IFCFACEBOUND_hash.empty();
 		IFCFACEOUTERBOUND_hash.empty();
 		IFCFACE_hash.empty();
+		IFCOPENSHELL_hash.empty();
 		IFCCLOSEDSHELL_hash.empty();
 		IFCFACETEDBREP_hash.empty();
 		IFCEXTRUDEDAREASOLID_hash.empty();
@@ -659,6 +694,37 @@ void checkFacePos(store *st){
 	}
 }
 
+void checkOpenShellPos(store *st){
+	int atLayer = 3;
+
+	for(unordered_map<int, OpenShell *>::iterator iter = st->IFCOPENSHELL_hash.begin(); iter != st->IFCOPENSHELL_hash.end(); iter++){
+		string Pos = iter->second->faces[0]->cubeindex;
+		for(int i = 0; i != iter->second->faces.size() && atLayer >= 1; i++){
+			if(iter->second->faces[i]->cubeindex.substr(0, atLayer) != Pos){
+				string Pos1 = iter->second->faces[i]->cubeindex.substr(0, atLayer - 1);
+				string Pos2 = Pos.substr(0, atLayer - 1);
+				if(Pos1 == Pos2){
+					Pos = Pos1;
+					atLayer--;
+				}
+				else{
+					Pos1 = iter->second->faces[i]->cubeindex.substr(0, atLayer - 2);
+					Pos2 = Pos.substr(0, atLayer - 2);
+					if(Pos1 == Pos2){
+						Pos = Pos1;
+						atLayer -= 2;
+					}
+					else{
+						Pos = Pos.substr(0, atLayer - 3);
+						break;
+					}
+				}
+			}
+		}
+		iter->second->cubeindex = Pos;
+	}
+}
+
 void checkClosedShellPos(store *st){
 	int atLayer = 3;
 
@@ -674,6 +740,37 @@ void checkClosedShellPos(store *st){
 				}
 				else{
 					Pos1 = iter->second->faces[i]->cubeindex.substr(0, atLayer - 2);
+					Pos2 = Pos.substr(0, atLayer - 2);
+					if(Pos1 == Pos2){
+						Pos = Pos1;
+						atLayer -= 2;
+					}
+					else{
+						Pos = Pos.substr(0, atLayer - 3);
+						break;
+					}
+				}
+			}
+		}
+		iter->second->cubeindex = Pos;
+	}
+}
+
+void checkShellBasedSurfaceModelPos(store *st){
+	int atLayer = 3;
+
+	for(unordered_map<int, ShellBasedSurfaceModel *>::iterator iter = st->IFCSHELLBASEDSURFACEMODEL_hash.begin(); iter != st->IFCSHELLBASEDSURFACEMODEL_hash.end(); iter++){
+		string Pos = iter->second->shells[0]->cubeindex;
+		for(int i = 0; i != iter->second->shells.size() && atLayer >= 1; i++){
+			if(iter->second->shells[i]->cubeindex.substr(0, atLayer) != Pos){
+				string Pos1 = iter->second->shells[i]->cubeindex.substr(0, atLayer - 1);
+				string Pos2 = Pos.substr(0, atLayer - 1);
+				if(Pos1 == Pos2){
+					Pos = Pos1;
+					atLayer--;
+				}
+				else{
+					Pos1 = iter->second->shells[i]->cubeindex.substr(0, atLayer - 2);
 					Pos2 = Pos.substr(0, atLayer - 2);
 					if(Pos1 == Pos2){
 						Pos = Pos1;
@@ -1090,6 +1187,10 @@ void checkShaperRepresentationPos(store *st){
 			}
 			iter->second->cubeindex = Pos;
 		}
+		else if(iter->second->ShapeMod == 3){
+			string Pos = iter->second->model->cubeindex;
+			iter->second->cubeindex = Pos;
+		}
 		else{
 		}
 		atLayer = 3;
@@ -1104,7 +1205,9 @@ void checkPositions(store *st){
 	checkFaceBoundPos(st);
 	checkFaceOuterBoundPos(st);
 	checkFacePos(st);
+	checkOpenShellPos(st);
 	checkClosedShellPos(st);
+	checkShellBasedSurfaceModelPos(st);
 	checkFacetedBrepPos(st);
 	checkShaperRepresentationPos(st);
 }
@@ -1296,6 +1399,53 @@ void ReadIFCAXIS2PLACEMENT3D(store *st, string file){
 
 				//st->Main_hash[lineNumber] = "IFCAXIS2PLACEMENT3D";
 				//st->IFCAXIS2PLACEMENT3D_hash[lineNumber] = A2P;
+			}
+		}
+	}
+}
+
+void ReadIFCPLANE(store *st, string file){
+	ifstream in(file);
+	string line;
+	if(in){
+		while(getline(in, line)){
+			int Pos = 0, lineNumber;
+			if(line.empty())
+				continue;
+			else if(line[Pos] == '#'){
+				Pos++;
+				lineNumber = line[Pos++] - '0';
+				while(Pos != line.length()){
+					if(isdigit(line[Pos])){
+						lineNumber *= 10;
+						lineNumber += (line[Pos++] - '0');
+					}
+					else
+						break;
+				}
+			}
+			else
+				continue;
+			if(isContain(line, "IFCPLANE") && !isContain(line, "IFCPLANEANGLEMEASURE")){
+					int planeNumber = 0;
+					Plane *plane = new Plane();
+					while(Pos != line.length()){
+						if(line[Pos] == '#'){
+							Pos++;
+							while(Pos != line.length() && isdigit(line[Pos])){
+								planeNumber *= 10;
+								planeNumber += (line[Pos++] - '0');
+							}
+						}
+						else
+							Pos++;
+					}
+					plane->Axis = st->IFCAXIS2PLACEMENT3D_hash[planeNumber];
+
+					std::pair<int, string> cppair1(lineNumber, "IFCARBITRARYCLOSEDPROFILEDEF");
+					std::pair<int, Plane *> cppair2(lineNumber, plane);
+					st->Main_hash.insert(cppair1);
+					st->IFCPLANE_hash.insert(cppair2);
 			}
 		}
 	}
@@ -2123,6 +2273,56 @@ void ReadIFCFACE(store *st, string file){
 	}
 }
 
+void ReadIFCOPENSHELL(store *st, string file){
+	ifstream in(file);
+	string line;
+	if(in){	
+		while(getline(in, line)){
+			int Pos = 0, lineNumber;
+			if(line.empty())
+				continue;
+			else if(line[Pos] == '#'){
+				Pos++;
+				lineNumber = line[Pos++] - '0';
+				while(Pos != line.length()){
+					if(isdigit(line[Pos])){
+						lineNumber *= 10;
+						lineNumber += (line[Pos++] - '0');
+					}
+					else
+						break;
+				}
+			}
+			else
+				continue;
+			if(isContain(line, "IFCOPENSHELL")){
+				int faceNumber = 0;
+				Face *face = new Face();
+				OpenShell *faces = new OpenShell();
+				while(Pos != line.length()){
+					if(line[Pos] == '#'){
+						Pos++;
+						while(Pos != line.length() && isdigit(line[Pos])){
+							faceNumber *= 10;
+							faceNumber += (line[Pos++] - '0');
+						}
+						face = st->IFCFACE_hash[faceNumber];
+						faces->faces.push_back(face);
+						faceNumber = 0;
+					}
+					else
+						Pos++;
+				}
+
+				std::pair<int, string> cspair1(lineNumber, "IFCOPENSHELL");
+				std::pair<int, OpenShell *> cspair2(lineNumber, faces);
+				st->Main_hash.insert(cspair1);
+				st->IFCOPENSHELL_hash.insert(cspair2);
+			}
+		}
+	}
+}
+
 void ReadIFCCLOSEDSHELL(store *st, string file){
 	ifstream in(file);
 	string line;
@@ -2171,6 +2371,56 @@ void ReadIFCCLOSEDSHELL(store *st, string file){
 
 				//st->Main_hash[lineNumber] = "IFCCLOSEDSHELL";
 				//st->IFCCLOSEDSHELL_hash[lineNumber] = faces;
+			}
+		}
+	}
+}
+
+void ReadIFCSHELLBASEDSURFACEMODEL(store *st, string file){
+	ifstream in(file);
+	string line;
+	if(in){	
+		while(getline(in, line)){
+			int Pos = 0, lineNumber;
+			if(line.empty())
+				continue;
+			else if(line[Pos] == '#'){
+				Pos++;
+				lineNumber = line[Pos++] - '0';
+				while(Pos != line.length()){
+					if(isdigit(line[Pos])){
+						lineNumber *= 10;
+						lineNumber += (line[Pos++] - '0');
+					}
+					else
+						break;
+				}
+			}
+			else
+				continue;
+			if(isContain(line, "IFCSHELLBASEDSURFACEMODEL")){
+				int shellNumber = 0;
+				OpenShell *shell = new OpenShell();
+				ShellBasedSurfaceModel *model = new ShellBasedSurfaceModel();
+				while(Pos != line.length()){
+					if(line[Pos] == '#'){
+						Pos++;
+						while(Pos != line.length() && isdigit(line[Pos])){
+							shellNumber *= 10;
+							shellNumber += (line[Pos++] - '0');
+						}
+						shell = st->IFCOPENSHELL_hash[shellNumber];
+						model->shells.push_back(shell);
+						shellNumber = 0;
+					}
+					else
+						Pos++;
+				}
+
+				std::pair<int, string> cspair1(lineNumber, "IFCSHELLBASEDSURFACEMODEL");
+				std::pair<int, ShellBasedSurfaceModel *> cspair2(lineNumber, model);
+				st->Main_hash.insert(cspair1);
+				st->IFCSHELLBASEDSURFACEMODEL_hash.insert(cspair2);
 			}
 		}
 	}
@@ -2477,6 +2727,7 @@ void ReadIFCSHAPEREPRESENTATION(store *st, string file){
 					int GeometricMod = 0;
 					
 					PolyLine *pLine = new PolyLine();
+					ShellBasedSurfaceModel *model = new ShellBasedSurfaceModel();
 					
 					int ShapeMod = 0;
 
@@ -2522,6 +2773,11 @@ void ReadIFCSHAPEREPRESENTATION(store *st, string file){
 								fBs.push_back(fB);
 								sR->ShapeMod = 2;
 							}
+							else if(st->Main_hash[Number] == "IFCSHELLBASEDSURFACEMODEL"){
+								model = st->IFCSHELLBASEDSURFACEMODEL_hash[Number];
+								sR->model = model;
+								sR->ShapeMod = 3;
+							}
 							else{
 								sR->ShapeMod = 9;
 							}
@@ -2566,10 +2822,11 @@ int _tmain(int argc, _TCHAR* argv[])
 
 
 	store *st = new store();
-	string file = "C:/Users/JLXU/Desktop/AC11-Institute-Var-2-IFC.ifc";
+	string file = "C:/Users/JLXU/Desktop/AC11-FZK-Haus-IFC.ifc";
 	ReadIFCDIRECTION(st, file);
 	ReadIFCCARTESIANPOINT(st, file);
 	ReadIFCAXIS2PLACEMENT3D(st, file);
+	ReadIFCPLANE(st, file);
 	ReadIFCAXIS2PLACEMENT2D(st, file);
 	ReadIFCLOCALPLACEMENT(st, file);
 	ReadIFCPOLYLINE(st, file);
@@ -2580,7 +2837,9 @@ int _tmain(int argc, _TCHAR* argv[])
 	ReadIFCFACEBOUND(st, file);
 	ReadIFCFACEOUTERBOUND(st, file);
 	ReadIFCFACE(st, file);
+	ReadIFCOPENSHELL(st, file);
 	ReadIFCCLOSEDSHELL(st, file);
+	ReadIFCSHELLBASEDSURFACEMODEL(st, file);
 	ReadIFCFACETEDBREP(st, file);
 	ReadIFCEXTRUDEDAREASOLID(st, file);
 	ReadIFCGEOMETRICREPRESENTATIONCONTEXT(st, file);
@@ -2592,6 +2851,9 @@ int _tmain(int argc, _TCHAR* argv[])
 	//cout << c.IFCPOLYLOOP_hash[68][1] << endl;
 	return 0;
 }
+
+// Next add IFCPOLYGONALBOUNDEDHALFSPACE
+
 
 /* Problems
 	
