@@ -87,6 +87,14 @@ struct PolyLine{
 	}
 };
 
+struct GeometricCurveset{
+	PolyLine *pLine;
+
+	GeometricCurveset(){
+		pLine = new PolyLine();
+	}
+};
+
 struct PolyLoop{
 	vector<CartesianPoint *> Points;
 	string cubeindex;
@@ -272,9 +280,10 @@ struct ShapeRepresentation{
 
 	vector<AreaSolid *> aSolid;
 	PolyLine *pLine;
+	GeometricCurveset *curveset;
 	vector<FacetedBrep *> fBs;
 	ShellBasedSurfaceModel *model;
-	int ShapeMod;	// 0 is AreSolid, 1 is pLine, 2 is FacetedBrep, 3 is ShellBasedSurfaceModel, 9 is unincluded Model
+	int ShapeMod;	// 0 is AreaSolid, 1 is pLine, 2 is FacetedBrep, 3 is ShellBasedSurfaceModel, 4 is GeometricCurveset, 9 is unincluded Model
 
 	string cubeindex;
 
@@ -284,6 +293,7 @@ struct ShapeRepresentation{
 		GeometricMod = 0;
 		aSolid.empty();
 		pLine = new PolyLine;
+		curveset = new GeometricCurveset;
 		model = new ShellBasedSurfaceModel;
 		fBs.empty();
 		ShapeMod = 0;
@@ -301,6 +311,7 @@ struct store{
 	unordered_map<int, Axis2Placement2D *> IFCAXIS2PLACEMENT2D_hash;
 	unordered_map<int, LocalPlacement *> IFCLOCALPLACEMENT_hash;
 	unordered_map<int, PolyLine *> IFCPOLYLINE_hash;
+	unordered_map<int, GeometricCurveset *> IFCGEOMETRICCURVESET_hash;
 	unordered_map<int, PolyLoop *> IFCPOLYLOOP_hash;
 	unordered_map<int, ArbitaryClosedProfile *> IFCARBITRARYCLOSEDPROFILEDEF_hash;
 	unordered_map<int, RectangleProfile *> IFCRECTANGLEPROFILEDEF_hash;
@@ -328,6 +339,7 @@ struct store{
 		IFCAXIS2PLACEMENT2D_hash.empty();
 		IFCLOCALPLACEMENT_hash.empty();
 		IFCPOLYLINE_hash.empty();
+		IFCGEOMETRICCURVESET_hash.empty();
 		IFCPOLYLOOP_hash.empty();
 		IFCARBITRARYCLOSEDPROFILEDEF_hash.empty();
 		IFCRECTANGLEPROFILEDEF_hash.empty();
@@ -353,27 +365,27 @@ struct store{
 };
 /*
 void ReleaseProfile(AreaSolid *Solid){
-	Solid->Profile1->pLine->Points.clear();
-	Solid->Profile2->P1->x = 0, Solid->Profile2->P1->y = 0, Solid->Profile2->P1->z = 0, Solid->Profile2->P1->cubeindex = "", Solid->Profile2->P1->is3D = false;
-	Solid->Profile2->P2->x = 0, Solid->Profile2->P2->y = 0, Solid->Profile2->P2->z = 0, Solid->Profile2->P2->cubeindex = "", Solid->Profile2->P2->is3D = false;
-	Solid->Profile2->P3->x = 0, Solid->Profile2->P3->y = 0, Solid->Profile2->P3->z = 0, Solid->Profile2->P3->cubeindex = "", Solid->Profile2->P3->is3D = false;
-	Solid->Profile2->P4->x = 0, Solid->Profile2->P4->y = 0, Solid->Profile2->P4->z = 0, Solid->Profile2->P4->cubeindex = "", Solid->Profile2->P4->is3D = false;
-	Solid->Profile2->axis->point->x = 0, Solid->Profile2->axis->point->y = 0, Solid->Profile2->axis->point->z = 0, Solid->Profile2->axis->point->cubeindex = "", Solid->Profile2->axis->point->is3D = false;
-	Solid->Profile2->axis->direction1->x = 0, Solid->Profile2->axis->direction1->y = 0, Solid->Profile2->axis->direction1->z = 0, Solid->Profile2->axis->direction1->is3D = false;
-	Solid->Profile2->axis->direction2->x = 0, Solid->Profile2->axis->direction2->y = 0, Solid->Profile2->axis->direction2->z = 0, Solid->Profile2->axis->direction2->is3D = false;
-	Solid->Profile2->xDim = 0, Solid->Profile2->yDim = 0;
+Solid->Profile1->pLine->Points.clear();
+Solid->Profile2->P1->x = 0, Solid->Profile2->P1->y = 0, Solid->Profile2->P1->z = 0, Solid->Profile2->P1->cubeindex = "", Solid->Profile2->P1->is3D = false;
+Solid->Profile2->P2->x = 0, Solid->Profile2->P2->y = 0, Solid->Profile2->P2->z = 0, Solid->Profile2->P2->cubeindex = "", Solid->Profile2->P2->is3D = false;
+Solid->Profile2->P3->x = 0, Solid->Profile2->P3->y = 0, Solid->Profile2->P3->z = 0, Solid->Profile2->P3->cubeindex = "", Solid->Profile2->P3->is3D = false;
+Solid->Profile2->P4->x = 0, Solid->Profile2->P4->y = 0, Solid->Profile2->P4->z = 0, Solid->Profile2->P4->cubeindex = "", Solid->Profile2->P4->is3D = false;
+Solid->Profile2->axis->point->x = 0, Solid->Profile2->axis->point->y = 0, Solid->Profile2->axis->point->z = 0, Solid->Profile2->axis->point->cubeindex = "", Solid->Profile2->axis->point->is3D = false;
+Solid->Profile2->axis->direction1->x = 0, Solid->Profile2->axis->direction1->y = 0, Solid->Profile2->axis->direction1->z = 0, Solid->Profile2->axis->direction1->is3D = false;
+Solid->Profile2->axis->direction2->x = 0, Solid->Profile2->axis->direction2->y = 0, Solid->Profile2->axis->direction2->z = 0, Solid->Profile2->axis->direction2->is3D = false;
+Solid->Profile2->xDim = 0, Solid->Profile2->yDim = 0;
 }
 */
 
 bool isContain(string slong, string sshort){
-	if(slong.size() <= sshort.size())
+	if (slong.size() <= sshort.size())
 		return false;
-	for(int i = 0; i <= slong.size() - sshort.size(); i++){
-		if(slong[i] == sshort[0]){
-			for(int j = i + 1, count = 1; count != sshort.length(); j++, count++){
-				if(slong[j] != sshort[count])
+	for (int i = 0; i <= slong.size() - sshort.size(); i++){
+		if (slong[i] == sshort[0]){
+			for (int j = i + 1, count = 1; count != sshort.length(); j++, count++){
+				if (slong[j] != sshort[count])
 					break;
-				if(count == sshort.length() - 1)
+				if (count == sshort.length() - 1)
 					return true;
 			}
 		}
@@ -394,11 +406,11 @@ CartesianPoint *CountAbsCoordinate(Direction *d1, Direction *d2, CartesianPoint 
 	double clinedDirectionNumber = 0;
 	double DirX, DirY, DirZ;
 	CartesianPoint *pnt = new CartesianPoint();
-	if(d1->x != 1 && d1->x != 0 && d1->x != -1){
+	if (d1->x != 1 && d1->x != 0 && d1->x != -1){
 		d1clined = true;
 		clinedDirection = 'X';
 		clinedDirectionNumber = d1->x;
-		if(d1->y != 0){
+		if (d1->y != 0){
 			clinedCoordinate = 'Y';
 			clinedCoordinateNumber = d1->y;
 		}
@@ -407,11 +419,11 @@ CartesianPoint *CountAbsCoordinate(Direction *d1, Direction *d2, CartesianPoint 
 			clinedCoordinateNumber = d1->z;
 		}
 	}
-	if(d2->x != 1 && d2->x != 0 && d2->x != -1){
+	if (d2->x != 1 && d2->x != 0 && d2->x != -1){
 		d2clined = true;
 		clinedDirection = 'X';
 		clinedDirectionNumber = d2->x;
-		if(d2->y != 0){
+		if (d2->y != 0){
 			clinedCoordinate = 'Y';
 			clinedCoordinateNumber = d2->y;
 		}
@@ -420,12 +432,12 @@ CartesianPoint *CountAbsCoordinate(Direction *d1, Direction *d2, CartesianPoint 
 			clinedCoordinateNumber = d2->z;
 		}
 	}
-	DirX = d1->x == 0? d2->x : d1->x;
-	if(d1->y != 1 && d1->y != 0 && d1->y != -1){
+	DirX = d1->x == 0 ? d2->x : d1->x;
+	if (d1->y != 1 && d1->y != 0 && d1->y != -1){
 		d1clined = true;
 		clinedDirection = 'Y';
 		clinedDirectionNumber = d1->y;
-		if(d1->x != 0){
+		if (d1->x != 0){
 			clinedCoordinate = 'X';
 			clinedCoordinateNumber = d1->x;
 		}
@@ -434,11 +446,11 @@ CartesianPoint *CountAbsCoordinate(Direction *d1, Direction *d2, CartesianPoint 
 			clinedCoordinateNumber = d1->z;
 		}
 	}
-	if(d2->y != 1 && d2->y != 0 && d2->y != -1){
+	if (d2->y != 1 && d2->y != 0 && d2->y != -1){
 		d2clined = true;
 		clinedDirection = 'Y';
 		clinedDirectionNumber = d2->y;
-		if(d2->x != 0){
+		if (d2->x != 0){
 			clinedCoordinate = 'X';
 			clinedCoordinateNumber = d2->x;
 		}
@@ -447,12 +459,12 @@ CartesianPoint *CountAbsCoordinate(Direction *d1, Direction *d2, CartesianPoint 
 			clinedCoordinateNumber = d2->z;
 		}
 	}
-	DirY = d1->y == 0? d2->y : d1->y;
-	if(d1->z != 1 && d1->z != 0 && d1->z != -1){
+	DirY = d1->y == 0 ? d2->y : d1->y;
+	if (d1->z != 1 && d1->z != 0 && d1->z != -1){
 		d1clined = true;
 		clinedDirection = 'Z';
 		clinedDirectionNumber = d1->z;
-		if(d1->x != 0){
+		if (d1->x != 0){
 			clinedCoordinate = 'X';
 			clinedCoordinateNumber = d1->x;
 		}
@@ -461,11 +473,11 @@ CartesianPoint *CountAbsCoordinate(Direction *d1, Direction *d2, CartesianPoint 
 			clinedCoordinateNumber = d1->y;
 		}
 	}
-	if(d2->z != 1 && d2->z != 0 && d2->z != -1){
+	if (d2->z != 1 && d2->z != 0 && d2->z != -1){
 		d2clined = true;
 		clinedDirection = 'Z';
 		clinedDirectionNumber = d2->z;
-		if(d2->x != 0){
+		if (d2->x != 0){
 			clinedCoordinate = 'X';
 			clinedCoordinateNumber = d2->x;
 		}
@@ -474,52 +486,52 @@ CartesianPoint *CountAbsCoordinate(Direction *d1, Direction *d2, CartesianPoint 
 			clinedCoordinateNumber = d2->y;
 		}
 	}
-	DirZ = d1->z == 0? d2->z : d1->z;
-	if(!CurPoint->is3D){
-		if(d1clined){
-			if(clinedCoordinate == 'Y'){
+	DirZ = d1->z == 0 ? d2->z : d1->z;
+	if (!CurPoint->is3D){
+		if (d1clined){
+			if (clinedCoordinate == 'Y'){
 				CurPoint->y = CurPoint->x;
 				CurPoint->x = 0;
 			}
-			else if(clinedCoordinate == 'Z'){
+			else if (clinedCoordinate == 'Z'){
 				CurPoint->z = CurPoint->x;
 				CurPoint->x = 0;
 			}
 		}
-		else if(d2clined){
-			if(clinedCoordinate == 'X'){
+		else if (d2clined){
+			if (clinedCoordinate == 'X'){
 				CurPoint->x = CurPoint->y;
 				CurPoint->y = 0;
 			}
-			else if(clinedCoordinate == 'Z'){
+			else if (clinedCoordinate == 'Z'){
 				CurPoint->z = CurPoint->y;
 				CurPoint->y = 0;
 			}
 		}
 		//Isn't clined
 		else{
-			if(d1->y != 0){
+			if (d1->y != 0){
 				CurPoint->y = CurPoint->x;
 				CurPoint->x = 0;
 			}
-			else if(d1->z != 0){
+			else if (d1->z != 0){
 				CurPoint->z = CurPoint->x;
 				CurPoint->x = 0;
 			}
-			if(d2->x != 0){
+			if (d2->x != 0){
 				CurPoint->x = CurPoint->y;
 				CurPoint->y = 0;
 			}
-			else if(d2->z != 0){
+			else if (d2->z != 0){
 				CurPoint->z = CurPoint->y;
 				CurPoint->y = 0;
 			}
 		}
 	}
-	if(d1clined || d2clined){
+	if (d1clined || d2clined){
 		double radian = CountRadian(clinedDirectionNumber, clinedCoordinateNumber);
-		if(clinedCoordinate == 'X'){
-			if(clinedDirection == 'Y'){
+		if (clinedCoordinate == 'X'){
+			if (clinedDirection == 'Y'){
 				pnt->x = CurPoint->x * cos(radian);
 				pnt->y = CurPoint->x * sin(radian);
 				pnt->z = CurPoint->z * DirZ;
@@ -530,20 +542,20 @@ CartesianPoint *CountAbsCoordinate(Direction *d1, Direction *d2, CartesianPoint 
 				pnt->z = CurPoint->x * sin(radian);
 			}
 		}
-		else if(clinedCoordinate == 'Y'){
-			if(clinedDirection == 'X'){
+		else if (clinedCoordinate == 'Y'){
+			if (clinedDirection == 'X'){
 				pnt->x = CurPoint->y * sin(radian);
 				pnt->y = CurPoint->y * cos(radian);
 				pnt->z = CurPoint->z * DirZ;
 			}
 			else{
 				pnt->x = CurPoint->x * DirX;
-				pnt->y = CurPoint->y * cos(radian); 
+				pnt->y = CurPoint->y * cos(radian);
 				pnt->z = CurPoint->y * sin(radian);
 			}
 		}
 		else{
-			if(clinedDirection == 'X'){
+			if (clinedDirection == 'X'){
 				pnt->x = CurPoint->z * sin(radian);
 				pnt->y = CurPoint->y * DirY;
 				pnt->z = CurPoint->z * cos(radian);
@@ -569,44 +581,44 @@ string checkSection(double xStartPos, double xEndPos, double yStartPos, double y
 	double yMid = (yStartPos + yEndPos) / 2;
 	double zMid = (zStartPos + zEndPos) / 2;
 
-	if(xPos >= xMid && yPos >= yMid && zPos >= zMid){
+	if (xPos >= xMid && yPos >= yMid && zPos >= zMid){
 		binaryPos += '0';
-		if(layer < 2)
+		if (layer < 2)
 			return checkSection((xStartPos + xEndPos) / 2, xEndPos, (yStartPos + yEndPos) / 2, yEndPos, (zStartPos + zEndPos) / 2, zEndPos, xPos, yPos, zPos, layer + 1, binaryPos);
 	}
-	else if(xPos < xMid && yPos >= yMid && zPos >= zMid){
+	else if (xPos < xMid && yPos >= yMid && zPos >= zMid){
 		binaryPos += '1';
-		if(layer < 2)
+		if (layer < 2)
 			return checkSection(xStartPos, (xStartPos + xEndPos) / 2, (yStartPos + yEndPos) / 2, yEndPos, (zStartPos + zEndPos) / 2, zEndPos, xPos, yPos, zPos, layer + 1, binaryPos);
 	}
-	else if(xPos < xMid && yPos < yMid && zPos >= zMid){
+	else if (xPos < xMid && yPos < yMid && zPos >= zMid){
 		binaryPos += '2';
-		if(layer < 2)
+		if (layer < 2)
 			return checkSection(xStartPos, (xStartPos + xEndPos) / 2, yStartPos, (yStartPos + yEndPos) / 2, (zStartPos + zEndPos) / 2, zEndPos, xPos, yPos, zPos, layer + 1, binaryPos);
 	}
-	else if(xPos >= xMid && yPos < yMid && zPos >= zMid){
+	else if (xPos >= xMid && yPos < yMid && zPos >= zMid){
 		binaryPos += '3';
-		if(layer < 2)
+		if (layer < 2)
 			return checkSection((xStartPos + xEndPos) / 2, xEndPos, yStartPos, (yStartPos + yEndPos) / 2, (zStartPos + zEndPos) / 2, zEndPos, xPos, yPos, zPos, layer + 1, binaryPos);
 	}
-	else if(xPos >= xMid && yPos >= yMid && zPos < zMid){
+	else if (xPos >= xMid && yPos >= yMid && zPos < zMid){
 		binaryPos += '4';
-		if(layer < 2)
+		if (layer < 2)
 			return checkSection((xStartPos + xEndPos) / 2, xEndPos, (yStartPos + yEndPos) / 2, yEndPos, zStartPos, (zStartPos + zEndPos) / 2, xPos, yPos, zPos, layer + 1, binaryPos);
 	}
-	else if(xPos < xMid && yPos >= yMid && zPos < zMid){
+	else if (xPos < xMid && yPos >= yMid && zPos < zMid){
 		binaryPos += '5';
-		if(layer < 2)
+		if (layer < 2)
 			return checkSection(xStartPos, (xStartPos + xEndPos) / 2, (yStartPos + yEndPos) / 2, yEndPos, zStartPos, (zStartPos + zEndPos) / 2, xPos, yPos, zPos, layer + 1, binaryPos);
 	}
-	else if(xPos < xMid && yPos < yMid && zPos < zMid){
+	else if (xPos < xMid && yPos < yMid && zPos < zMid){
 		binaryPos += '6';
-		if(layer < 2)
+		if (layer < 2)
 			return checkSection(xStartPos, (xStartPos + xEndPos) / 2, yStartPos, (yStartPos + yEndPos) / 2, zStartPos, (zStartPos + zEndPos) / 2, xPos, yPos, zPos, layer + 1, binaryPos);
 	}
 	else{
 		binaryPos += '7';
-		if(layer < 2)
+		if (layer < 2)
 			return checkSection((xStartPos + xEndPos) / 2, xEndPos, yStartPos, (yStartPos + yEndPos) / 2, zStartPos, (zStartPos + zEndPos) / 2, xPos, yPos, zPos, layer + 1, binaryPos);
 	}
 
@@ -620,8 +632,8 @@ void checkPointPos(store st){
 	double xMinPos = st.xCoordinateMin;
 	double yMinPos = st.yCoordinateMin;
 	double zMinPos = st.zCoordinateMin;
-	for(unordered_map<int, CartesianPoint *>::iterator iter = st.IFCCARTESIANPOINT_hash.begin(); iter != st.IFCCARTESIANPOINT_hash.end(); iter++){
-		if(iter->second->is3D){
+	for (unordered_map<int, CartesianPoint *>::iterator iter = st.IFCCARTESIANPOINT_hash.begin(); iter != st.IFCCARTESIANPOINT_hash.end(); iter++){
+		if (iter->second->is3D){
 			string binaryPos;
 			iter->second->cubeindex = checkSection(xMinPos, xMaxPos, yMinPos, yMaxPos, zMinPos, zMaxPos, iter->second->x, iter->second->y, iter->second->z, 0, binaryPos);
 		}
@@ -637,7 +649,7 @@ void checkSinglePointPos(store *st){
 	double xMinPos = st->xCoordinateMin;
 	double yMinPos = st->yCoordinateMin;
 	double zMinPos = st->zCoordinateMin;
-	for(unordered_map<int, CartesianPoint *>::iterator iter = st->IFCCARTESIANPOINT_hash.begin(); iter != st->IFCCARTESIANPOINT_hash.end(); iter++){
+	for (unordered_map<int, CartesianPoint *>::iterator iter = st->IFCCARTESIANPOINT_hash.begin(); iter != st->IFCCARTESIANPOINT_hash.end(); iter++){
 		string binaryPos;
 		iter->second->cubeindex = checkSection(xMinPos, xMaxPos, yMinPos, yMaxPos, zMinPos, zMaxPos, iter->second->x, iter->second->y, iter->second->z, 0, binaryPos);
 	}
@@ -645,20 +657,20 @@ void checkSinglePointPos(store *st){
 
 void checkPolyLoopPos(store *st){
 	int atLayer = 3;
-	for(unordered_map<int, PolyLoop *>::iterator iter = st->IFCPOLYLOOP_hash.begin(); iter != st->IFCPOLYLOOP_hash.end(); iter++){
+	for (unordered_map<int, PolyLoop *>::iterator iter = st->IFCPOLYLOOP_hash.begin(); iter != st->IFCPOLYLOOP_hash.end(); iter++){
 		string Pos = iter->second->Points[0]->cubeindex;
-		for(int i = 0; i != iter->second->Points.size(); i++){
-			if(iter->second->Points[i]->cubeindex.substr(0, atLayer) != Pos){
+		for (int i = 0; i != iter->second->Points.size(); i++){
+			if (iter->second->Points[i]->cubeindex.substr(0, atLayer) != Pos){
 				string Pos1 = iter->second->Points[i]->cubeindex.substr(0, atLayer - 1);
 				string Pos2 = Pos.substr(0, atLayer - 1);
-				if(Pos1 == Pos2){
+				if (Pos1 == Pos2){
 					Pos = Pos1;
 					atLayer--;
 				}
 				else{
 					Pos1 = iter->second->Points[i]->cubeindex.substr(0, atLayer - 2);
 					Pos2 = Pos.substr(0, atLayer - 2);
-					if(Pos1 == Pos2){
+					if (Pos1 == Pos2){
 						Pos = Pos1;
 						atLayer -= 2;
 					}
@@ -674,22 +686,22 @@ void checkPolyLoopPos(store *st){
 }
 
 void checkFaceBoundPos(store *st){
-	for(unordered_map<int, FaceBound *>::iterator iter = st->IFCFACEBOUND_hash.begin(); iter != st->IFCFACEBOUND_hash.end(); iter++)
+	for (unordered_map<int, FaceBound *>::iterator iter = st->IFCFACEBOUND_hash.begin(); iter != st->IFCFACEBOUND_hash.end(); iter++)
 		iter->second->cubeindex = iter->second->Loop->cubeindex;
 }
 
 void checkFaceOuterBoundPos(store *st){
 	int i = 0;
-	for(unordered_map<int, FaceOuterBound *>::iterator iter = st->IFCFACEOUTERBOUND_hash.begin(); iter != st->IFCFACEOUTERBOUND_hash.end(); iter++)
+	for (unordered_map<int, FaceOuterBound *>::iterator iter = st->IFCFACEOUTERBOUND_hash.begin(); iter != st->IFCFACEOUTERBOUND_hash.end(); iter++)
 		iter->second->cubeindex = iter->second->Loop->cubeindex;
 }
 
 // Dosen't finish when FaceMod==1
 void checkFacePos(store *st){
-	for(unordered_map<int, Face *>::iterator iter = st->IFCFACE_hash.begin(); iter != st->IFCFACE_hash.end(); iter++){
-		if(iter->second->FaceMod == 0)
+	for (unordered_map<int, Face *>::iterator iter = st->IFCFACE_hash.begin(); iter != st->IFCFACE_hash.end(); iter++){
+		if (iter->second->FaceMod == 0)
 			iter->second->cubeindex = iter->second->outerBound->cubeindex;
-		else if(iter->second->FaceMod == 1)
+		else if (iter->second->FaceMod == 1)
 			iter->second->cubeindex = iter->second->Bound->cubeindex;
 	}
 }
@@ -697,20 +709,20 @@ void checkFacePos(store *st){
 void checkOpenShellPos(store *st){
 	int atLayer = 3;
 
-	for(unordered_map<int, OpenShell *>::iterator iter = st->IFCOPENSHELL_hash.begin(); iter != st->IFCOPENSHELL_hash.end(); iter++){
+	for (unordered_map<int, OpenShell *>::iterator iter = st->IFCOPENSHELL_hash.begin(); iter != st->IFCOPENSHELL_hash.end(); iter++){
 		string Pos = iter->second->faces[0]->cubeindex;
-		for(int i = 0; i != iter->second->faces.size() && atLayer >= 1; i++){
-			if(iter->second->faces[i]->cubeindex.substr(0, atLayer) != Pos){
+		for (int i = 0; i != iter->second->faces.size() && atLayer >= 1; i++){
+			if (iter->second->faces[i]->cubeindex.substr(0, atLayer) != Pos){
 				string Pos1 = iter->second->faces[i]->cubeindex.substr(0, atLayer - 1);
 				string Pos2 = Pos.substr(0, atLayer - 1);
-				if(Pos1 == Pos2){
+				if (Pos1 == Pos2){
 					Pos = Pos1;
 					atLayer--;
 				}
 				else{
 					Pos1 = iter->second->faces[i]->cubeindex.substr(0, atLayer - 2);
 					Pos2 = Pos.substr(0, atLayer - 2);
-					if(Pos1 == Pos2){
+					if (Pos1 == Pos2){
 						Pos = Pos1;
 						atLayer -= 2;
 					}
@@ -728,20 +740,20 @@ void checkOpenShellPos(store *st){
 void checkClosedShellPos(store *st){
 	int atLayer = 3;
 
-	for(unordered_map<int, ClosedShell *>::iterator iter = st->IFCCLOSEDSHELL_hash.begin(); iter != st->IFCCLOSEDSHELL_hash.end(); iter++){
+	for (unordered_map<int, ClosedShell *>::iterator iter = st->IFCCLOSEDSHELL_hash.begin(); iter != st->IFCCLOSEDSHELL_hash.end(); iter++){
 		string Pos = iter->second->faces[0]->cubeindex;
-		for(int i = 0; i != iter->second->faces.size() && atLayer >= 1; i++){
-			if(iter->second->faces[i]->cubeindex.substr(0, atLayer) != Pos){
+		for (int i = 0; i != iter->second->faces.size() && atLayer >= 1; i++){
+			if (iter->second->faces[i]->cubeindex.substr(0, atLayer) != Pos){
 				string Pos1 = iter->second->faces[i]->cubeindex.substr(0, atLayer - 1);
 				string Pos2 = Pos.substr(0, atLayer - 1);
-				if(Pos1 == Pos2){
+				if (Pos1 == Pos2){
 					Pos = Pos1;
 					atLayer--;
 				}
 				else{
 					Pos1 = iter->second->faces[i]->cubeindex.substr(0, atLayer - 2);
 					Pos2 = Pos.substr(0, atLayer - 2);
-					if(Pos1 == Pos2){
+					if (Pos1 == Pos2){
 						Pos = Pos1;
 						atLayer -= 2;
 					}
@@ -759,20 +771,20 @@ void checkClosedShellPos(store *st){
 void checkShellBasedSurfaceModelPos(store *st){
 	int atLayer = 3;
 
-	for(unordered_map<int, ShellBasedSurfaceModel *>::iterator iter = st->IFCSHELLBASEDSURFACEMODEL_hash.begin(); iter != st->IFCSHELLBASEDSURFACEMODEL_hash.end(); iter++){
+	for (unordered_map<int, ShellBasedSurfaceModel *>::iterator iter = st->IFCSHELLBASEDSURFACEMODEL_hash.begin(); iter != st->IFCSHELLBASEDSURFACEMODEL_hash.end(); iter++){
 		string Pos = iter->second->shells[0]->cubeindex;
-		for(int i = 0; i != iter->second->shells.size() && atLayer >= 1; i++){
-			if(iter->second->shells[i]->cubeindex.substr(0, atLayer) != Pos){
+		for (int i = 0; i != iter->second->shells.size() && atLayer >= 1; i++){
+			if (iter->second->shells[i]->cubeindex.substr(0, atLayer) != Pos){
 				string Pos1 = iter->second->shells[i]->cubeindex.substr(0, atLayer - 1);
 				string Pos2 = Pos.substr(0, atLayer - 1);
-				if(Pos1 == Pos2){
+				if (Pos1 == Pos2){
 					Pos = Pos1;
 					atLayer--;
 				}
 				else{
 					Pos1 = iter->second->shells[i]->cubeindex.substr(0, atLayer - 2);
 					Pos2 = Pos.substr(0, atLayer - 2);
-					if(Pos1 == Pos2){
+					if (Pos1 == Pos2){
 						Pos = Pos1;
 						atLayer -= 2;
 					}
@@ -788,14 +800,14 @@ void checkShellBasedSurfaceModelPos(store *st){
 }
 
 void checkFacetedBrepPos(store *st){
-	for(unordered_map<int, FacetedBrep *>::iterator iter = st->IFCFACETEDBREP_hash.begin(); iter != st->IFCFACETEDBREP_hash.end(); iter++)
+	for (unordered_map<int, FacetedBrep *>::iterator iter = st->IFCFACETEDBREP_hash.begin(); iter != st->IFCFACETEDBREP_hash.end(); iter++)
 		iter->second->cubeindex = iter->second->Shell->cubeindex;
 }
 
 void checkAreaSolidPointsBound(store *st){
-	for(unordered_map<int, AreaSolid *>::iterator iter1 = st->IFCEXTRUDEDAREASOLID_hash.begin(); iter1 != st->IFCEXTRUDEDAREASOLID_hash.end(); iter1++){
-		if(iter1->second->ProfileMod == 0){
-			for(int i = 0; i != iter1->second->Profile1->pLine->Points.size(); i++){
+	for (unordered_map<int, AreaSolid *>::iterator iter1 = st->IFCEXTRUDEDAREASOLID_hash.begin(); iter1 != st->IFCEXTRUDEDAREASOLID_hash.end(); iter1++){
+		if (iter1->second->ProfileMod == 0){
+			for (int i = 0; i != iter1->second->Profile1->pLine->Points.size(); i++){
 				// Step 1: Points relate to Axis
 				CartesianPoint *pnt = CountAbsCoordinate(iter1->second->Axis->Directions1, iter1->second->Axis->Directions2, iter1->second->Profile1->pLine->Points[i]);
 				pnt->x += iter1->second->Axis->originalPoint->x;
@@ -807,17 +819,17 @@ void checkAreaSolidPointsBound(store *st){
 				pnt->z += iter1->second->Position * iter1->second->Dir->z;
 				pnt->is3D = true;
 
-				st->xCoordinateMax = st->xCoordinateMax > pnt->x? st->xCoordinateMax : pnt->x;
-				st->xCoordinateMin = st->xCoordinateMin < pnt->x? st->xCoordinateMin : pnt->x;
-				st->yCoordinateMax = st->yCoordinateMax > pnt->y? st->yCoordinateMax : pnt->y;
-				st->yCoordinateMin = st->yCoordinateMin < pnt->y? st->yCoordinateMin : pnt->y;
-				st->zCoordinateMax = st->zCoordinateMax > pnt->z? st->zCoordinateMax : pnt->z;
-				st->zCoordinateMin = st->zCoordinateMin < pnt->z? st->zCoordinateMin : pnt->z;
+				st->xCoordinateMax = st->xCoordinateMax > pnt->x ? st->xCoordinateMax : pnt->x;
+				st->xCoordinateMin = st->xCoordinateMin < pnt->x ? st->xCoordinateMin : pnt->x;
+				st->yCoordinateMax = st->yCoordinateMax > pnt->y ? st->yCoordinateMax : pnt->y;
+				st->yCoordinateMin = st->yCoordinateMin < pnt->y ? st->yCoordinateMin : pnt->y;
+				st->zCoordinateMax = st->zCoordinateMax > pnt->z ? st->zCoordinateMax : pnt->z;
+				st->zCoordinateMin = st->zCoordinateMin < pnt->z ? st->zCoordinateMin : pnt->z;
 
-				iter1->second->Profile1->pLine->Points[i] = pnt;	
+				iter1->second->Profile1->pLine->Points[i] = pnt;
 			}
 		}
-		else if(iter1->second->ProfileMod == 1){
+		else if (iter1->second->ProfileMod == 1){
 			CartesianPoint *pnt1 = CountAbsCoordinate(iter1->second->Axis->Directions1, iter1->second->Axis->Directions2, iter1->second->Profile2->P1);
 			CartesianPoint *pnt2 = CountAbsCoordinate(iter1->second->Axis->Directions1, iter1->second->Axis->Directions2, iter1->second->Profile2->P2);
 			CartesianPoint *pnt3 = CountAbsCoordinate(iter1->second->Axis->Directions1, iter1->second->Axis->Directions2, iter1->second->Profile2->P3);
@@ -832,15 +844,15 @@ void checkAreaSolidPointsBound(store *st){
 			pnt1->z += iter1->second->Position * iter1->second->Dir->z;
 			pnt1->is3D = true;
 
-			st->xCoordinateMax = st->xCoordinateMax > pnt1->x? st->xCoordinateMax : pnt1->x;
-			st->xCoordinateMin = st->xCoordinateMin < pnt1->x? st->xCoordinateMin : pnt1->x;
-			st->yCoordinateMax = st->yCoordinateMax > pnt1->y? st->yCoordinateMax : pnt1->y;
-			st->yCoordinateMin = st->yCoordinateMin < pnt1->y? st->yCoordinateMin : pnt1->y;
-			st->zCoordinateMax = st->zCoordinateMax > pnt1->z? st->zCoordinateMax : pnt1->z;
-			st->zCoordinateMin = st->zCoordinateMin < pnt1->z? st->zCoordinateMin : pnt1->z;
-		
-			iter1->second->Profile2->P1 = pnt1;	
-			
+			st->xCoordinateMax = st->xCoordinateMax > pnt1->x ? st->xCoordinateMax : pnt1->x;
+			st->xCoordinateMin = st->xCoordinateMin < pnt1->x ? st->xCoordinateMin : pnt1->x;
+			st->yCoordinateMax = st->yCoordinateMax > pnt1->y ? st->yCoordinateMax : pnt1->y;
+			st->yCoordinateMin = st->yCoordinateMin < pnt1->y ? st->yCoordinateMin : pnt1->y;
+			st->zCoordinateMax = st->zCoordinateMax > pnt1->z ? st->zCoordinateMax : pnt1->z;
+			st->zCoordinateMin = st->zCoordinateMin < pnt1->z ? st->zCoordinateMin : pnt1->z;
+
+			iter1->second->Profile2->P1 = pnt1;
+
 			pnt2->x += iter1->second->Axis->originalPoint->x;
 			pnt2->y += iter1->second->Axis->originalPoint->y;
 			pnt2->z += iter1->second->Axis->originalPoint->z;
@@ -850,52 +862,52 @@ void checkAreaSolidPointsBound(store *st){
 			pnt2->z += iter1->second->Position * iter1->second->Dir->z;
 			pnt2->is3D = true;
 
-			st->xCoordinateMax = st->xCoordinateMax > pnt2->x? st->xCoordinateMax : pnt2->x;
-			st->xCoordinateMin = st->xCoordinateMin < pnt2->x? st->xCoordinateMin : pnt2->x;
-			st->yCoordinateMax = st->yCoordinateMax > pnt2->y? st->yCoordinateMax : pnt2->y;
-			st->yCoordinateMin = st->yCoordinateMin < pnt2->y? st->yCoordinateMin : pnt2->y;
-			st->zCoordinateMax = st->zCoordinateMax > pnt2->z? st->zCoordinateMax : pnt2->z;
-			st->zCoordinateMin = st->zCoordinateMin < pnt2->z? st->zCoordinateMin : pnt2->z;
-		
-			iter1->second->Profile2->P2 = pnt2;	
+			st->xCoordinateMax = st->xCoordinateMax > pnt2->x ? st->xCoordinateMax : pnt2->x;
+			st->xCoordinateMin = st->xCoordinateMin < pnt2->x ? st->xCoordinateMin : pnt2->x;
+			st->yCoordinateMax = st->yCoordinateMax > pnt2->y ? st->yCoordinateMax : pnt2->y;
+			st->yCoordinateMin = st->yCoordinateMin < pnt2->y ? st->yCoordinateMin : pnt2->y;
+			st->zCoordinateMax = st->zCoordinateMax > pnt2->z ? st->zCoordinateMax : pnt2->z;
+			st->zCoordinateMin = st->zCoordinateMin < pnt2->z ? st->zCoordinateMin : pnt2->z;
+
+			iter1->second->Profile2->P2 = pnt2;
 
 			pnt3->x += iter1->second->Axis->originalPoint->x;
 			pnt3->y += iter1->second->Axis->originalPoint->y;
-			pnt3->z += iter1->second->Axis->originalPoint->z;			
+			pnt3->z += iter1->second->Axis->originalPoint->z;
 
 			pnt3->x += iter1->second->Position * iter1->second->Dir->x;
 			pnt3->y += iter1->second->Position * iter1->second->Dir->y;
 			pnt3->z += iter1->second->Position * iter1->second->Dir->z;
 			pnt3->is3D = true;
 
-			st->xCoordinateMax = st->xCoordinateMax > pnt3->x? st->xCoordinateMax : pnt3->x;
-			st->xCoordinateMin = st->xCoordinateMin < pnt3->x? st->xCoordinateMin : pnt3->x;
-			st->yCoordinateMax = st->yCoordinateMax > pnt3->y? st->yCoordinateMax : pnt3->y;
-			st->yCoordinateMin = st->yCoordinateMin < pnt3->y? st->yCoordinateMin : pnt3->y;
-			st->zCoordinateMax = st->zCoordinateMax > pnt3->z? st->zCoordinateMax : pnt3->z;
-			st->zCoordinateMin = st->zCoordinateMin < pnt3->z? st->zCoordinateMin : pnt3->z;
-		
-			iter1->second->Profile2->P3 = pnt3;	
+			st->xCoordinateMax = st->xCoordinateMax > pnt3->x ? st->xCoordinateMax : pnt3->x;
+			st->xCoordinateMin = st->xCoordinateMin < pnt3->x ? st->xCoordinateMin : pnt3->x;
+			st->yCoordinateMax = st->yCoordinateMax > pnt3->y ? st->yCoordinateMax : pnt3->y;
+			st->yCoordinateMin = st->yCoordinateMin < pnt3->y ? st->yCoordinateMin : pnt3->y;
+			st->zCoordinateMax = st->zCoordinateMax > pnt3->z ? st->zCoordinateMax : pnt3->z;
+			st->zCoordinateMin = st->zCoordinateMin < pnt3->z ? st->zCoordinateMin : pnt3->z;
+
+			iter1->second->Profile2->P3 = pnt3;
 
 			pnt4->x += iter1->second->Axis->originalPoint->x;
 			pnt4->y += iter1->second->Axis->originalPoint->y;
 			pnt4->z += iter1->second->Axis->originalPoint->z;
-			
+
 			pnt4->x += iter1->second->Position * iter1->second->Dir->x;
 			pnt4->y += iter1->second->Position * iter1->second->Dir->y;
 			pnt4->z += iter1->second->Position * iter1->second->Dir->z;
 			pnt4->is3D = true;
 
-			st->xCoordinateMax = st->xCoordinateMax > pnt4->x? st->xCoordinateMax : pnt4->x;
-			st->xCoordinateMin = st->xCoordinateMin < pnt4->x? st->xCoordinateMin : pnt4->x;
-			st->yCoordinateMax = st->yCoordinateMax > pnt4->y? st->yCoordinateMax : pnt4->y;
-			st->yCoordinateMin = st->yCoordinateMin < pnt4->y? st->yCoordinateMin : pnt4->y;
-			st->zCoordinateMax = st->zCoordinateMax > pnt4->z? st->zCoordinateMax : pnt4->z;
-			st->zCoordinateMin = st->zCoordinateMin < pnt4->z? st->zCoordinateMin : pnt4->z;
-		
-			iter1->second->Profile2->P4 = pnt4;	
+			st->xCoordinateMax = st->xCoordinateMax > pnt4->x ? st->xCoordinateMax : pnt4->x;
+			st->xCoordinateMin = st->xCoordinateMin < pnt4->x ? st->xCoordinateMin : pnt4->x;
+			st->yCoordinateMax = st->yCoordinateMax > pnt4->y ? st->yCoordinateMax : pnt4->y;
+			st->yCoordinateMin = st->yCoordinateMin < pnt4->y ? st->yCoordinateMin : pnt4->y;
+			st->zCoordinateMax = st->zCoordinateMax > pnt4->z ? st->zCoordinateMax : pnt4->z;
+			st->zCoordinateMin = st->zCoordinateMin < pnt4->z ? st->zCoordinateMin : pnt4->z;
+
+			iter1->second->Profile2->P4 = pnt4;
 		}
-		else if(iter1->second->ProfileMod == 2){
+		else if (iter1->second->ProfileMod == 2){
 			CartesianPoint *pnt1 = CountAbsCoordinate(iter1->second->Axis->Directions1, iter1->second->Axis->Directions2, iter1->second->Profile3->t);
 			CartesianPoint *pnt2 = CountAbsCoordinate(iter1->second->Axis->Directions1, iter1->second->Axis->Directions2, iter1->second->Profile3->b);
 			CartesianPoint *pnt3 = CountAbsCoordinate(iter1->second->Axis->Directions1, iter1->second->Axis->Directions2, iter1->second->Profile3->l);
@@ -910,13 +922,13 @@ void checkAreaSolidPointsBound(store *st){
 			pnt1->z += iter1->second->Position * iter1->second->Dir->z;
 			pnt1->is3D = true;
 
-			st->xCoordinateMax = st->xCoordinateMax > pnt1->x? st->xCoordinateMax : pnt1->x;
-			st->xCoordinateMin = st->xCoordinateMin < pnt1->x? st->xCoordinateMin : pnt1->x;
-			st->yCoordinateMax = st->yCoordinateMax > pnt1->y? st->yCoordinateMax : pnt1->y;
-			st->yCoordinateMin = st->yCoordinateMin < pnt1->y? st->yCoordinateMin : pnt1->y;
-			st->zCoordinateMax = st->zCoordinateMax > pnt1->z? st->zCoordinateMax : pnt1->z;
-			st->zCoordinateMin = st->zCoordinateMin < pnt1->z? st->zCoordinateMin : pnt1->z;
-		
+			st->xCoordinateMax = st->xCoordinateMax > pnt1->x ? st->xCoordinateMax : pnt1->x;
+			st->xCoordinateMin = st->xCoordinateMin < pnt1->x ? st->xCoordinateMin : pnt1->x;
+			st->yCoordinateMax = st->yCoordinateMax > pnt1->y ? st->yCoordinateMax : pnt1->y;
+			st->yCoordinateMin = st->yCoordinateMin < pnt1->y ? st->yCoordinateMin : pnt1->y;
+			st->zCoordinateMax = st->zCoordinateMax > pnt1->z ? st->zCoordinateMax : pnt1->z;
+			st->zCoordinateMin = st->zCoordinateMin < pnt1->z ? st->zCoordinateMin : pnt1->z;
+
 			iter1->second->Profile3->t = pnt1;
 
 			pnt2->x += iter1->second->Axis->originalPoint->x;
@@ -928,13 +940,13 @@ void checkAreaSolidPointsBound(store *st){
 			pnt2->z += iter1->second->Position * iter1->second->Dir->z;
 			pnt2->is3D = true;
 
-			st->xCoordinateMax = st->xCoordinateMax > pnt2->x? st->xCoordinateMax : pnt2->x;
-			st->xCoordinateMin = st->xCoordinateMin < pnt2->x? st->xCoordinateMin : pnt2->x;
-			st->yCoordinateMax = st->yCoordinateMax > pnt2->y? st->yCoordinateMax : pnt2->y;
-			st->yCoordinateMin = st->yCoordinateMin < pnt2->y? st->yCoordinateMin : pnt2->y;
-			st->zCoordinateMax = st->zCoordinateMax > pnt2->z? st->zCoordinateMax : pnt2->z;
-			st->zCoordinateMin = st->zCoordinateMin < pnt2->z? st->zCoordinateMin : pnt2->z;
-		
+			st->xCoordinateMax = st->xCoordinateMax > pnt2->x ? st->xCoordinateMax : pnt2->x;
+			st->xCoordinateMin = st->xCoordinateMin < pnt2->x ? st->xCoordinateMin : pnt2->x;
+			st->yCoordinateMax = st->yCoordinateMax > pnt2->y ? st->yCoordinateMax : pnt2->y;
+			st->yCoordinateMin = st->yCoordinateMin < pnt2->y ? st->yCoordinateMin : pnt2->y;
+			st->zCoordinateMax = st->zCoordinateMax > pnt2->z ? st->zCoordinateMax : pnt2->z;
+			st->zCoordinateMin = st->zCoordinateMin < pnt2->z ? st->zCoordinateMin : pnt2->z;
+
 			iter1->second->Profile3->b = pnt2;
 
 			pnt3->x += iter1->second->Axis->originalPoint->x;
@@ -946,13 +958,13 @@ void checkAreaSolidPointsBound(store *st){
 			pnt3->z += iter1->second->Position * iter1->second->Dir->z;
 			pnt3->is3D = true;
 
-			st->xCoordinateMax = st->xCoordinateMax > pnt3->x? st->xCoordinateMax : pnt3->x;
-			st->xCoordinateMin = st->xCoordinateMin < pnt3->x? st->xCoordinateMin : pnt3->x;
-			st->yCoordinateMax = st->yCoordinateMax > pnt3->y? st->yCoordinateMax : pnt3->y;
-			st->yCoordinateMin = st->yCoordinateMin < pnt3->y? st->yCoordinateMin : pnt3->y;
-			st->zCoordinateMax = st->zCoordinateMax > pnt3->z? st->zCoordinateMax : pnt3->z;
-			st->zCoordinateMin = st->zCoordinateMin < pnt3->z? st->zCoordinateMin : pnt3->z;
-		
+			st->xCoordinateMax = st->xCoordinateMax > pnt3->x ? st->xCoordinateMax : pnt3->x;
+			st->xCoordinateMin = st->xCoordinateMin < pnt3->x ? st->xCoordinateMin : pnt3->x;
+			st->yCoordinateMax = st->yCoordinateMax > pnt3->y ? st->yCoordinateMax : pnt3->y;
+			st->yCoordinateMin = st->yCoordinateMin < pnt3->y ? st->yCoordinateMin : pnt3->y;
+			st->zCoordinateMax = st->zCoordinateMax > pnt3->z ? st->zCoordinateMax : pnt3->z;
+			st->zCoordinateMin = st->zCoordinateMin < pnt3->z ? st->zCoordinateMin : pnt3->z;
+
 			iter1->second->Profile3->l = pnt3;
 
 			pnt4->x += iter1->second->Axis->originalPoint->x;
@@ -964,23 +976,23 @@ void checkAreaSolidPointsBound(store *st){
 			pnt4->z += iter1->second->Position * iter1->second->Dir->z;
 			pnt4->is3D = true;
 
-			st->xCoordinateMax = st->xCoordinateMax > pnt4->x? st->xCoordinateMax : pnt4->x;
-			st->xCoordinateMin = st->xCoordinateMin < pnt4->x? st->xCoordinateMin : pnt4->x;
-			st->yCoordinateMax = st->yCoordinateMax > pnt4->y? st->yCoordinateMax : pnt4->y;
-			st->yCoordinateMin = st->yCoordinateMin < pnt4->y? st->yCoordinateMin : pnt4->y;
-			st->zCoordinateMax = st->zCoordinateMax > pnt4->z? st->zCoordinateMax : pnt4->z;
-			st->zCoordinateMin = st->zCoordinateMin < pnt4->z? st->zCoordinateMin : pnt4->z;
-		
+			st->xCoordinateMax = st->xCoordinateMax > pnt4->x ? st->xCoordinateMax : pnt4->x;
+			st->xCoordinateMin = st->xCoordinateMin < pnt4->x ? st->xCoordinateMin : pnt4->x;
+			st->yCoordinateMax = st->yCoordinateMax > pnt4->y ? st->yCoordinateMax : pnt4->y;
+			st->yCoordinateMin = st->yCoordinateMin < pnt4->y ? st->yCoordinateMin : pnt4->y;
+			st->zCoordinateMax = st->zCoordinateMax > pnt4->z ? st->zCoordinateMax : pnt4->z;
+			st->zCoordinateMin = st->zCoordinateMin < pnt4->z ? st->zCoordinateMin : pnt4->z;
+
 			iter1->second->Profile3->r = pnt4;
 		}
 	}
 }
 
 void checkAreaSolidPos(store *st){
-	vector<CartesianPoint *> pnts;	
-	for(unordered_map<int, AreaSolid *>::iterator iter1 = st->IFCEXTRUDEDAREASOLID_hash.begin(); iter1 != st->IFCEXTRUDEDAREASOLID_hash.end(); iter1++){
-		if(iter1->second->ProfileMod == 0){
-			for(int i = 0; i != iter1->second->Profile1->pLine->Points.size(); i++){
+	vector<CartesianPoint *> pnts;
+	for (unordered_map<int, AreaSolid *>::iterator iter1 = st->IFCEXTRUDEDAREASOLID_hash.begin(); iter1 != st->IFCEXTRUDEDAREASOLID_hash.end(); iter1++){
+		if (iter1->second->ProfileMod == 0){
+			for (int i = 0; i != iter1->second->Profile1->pLine->Points.size(); i++){
 				CartesianPoint *pnt = iter1->second->Profile1->pLine->Points[i];
 				string binaryPos;
 				pnt->cubeindex = checkSection(st->xCoordinateMin, st->xCoordinateMax, st->yCoordinateMin, st->yCoordinateMax, st->zCoordinateMin, st->zCoordinateMax, pnt->x, pnt->y, pnt->z, 0, binaryPos);
@@ -988,7 +1000,7 @@ void checkAreaSolidPos(store *st){
 				pnts.push_back(pnt);
 			}
 		}
-		else if(iter1->second->ProfileMod == 1){
+		else if (iter1->second->ProfileMod == 1){
 			string binaryPos;
 			binaryPos = checkSection(st->xCoordinateMin, st->xCoordinateMax, st->yCoordinateMin, st->yCoordinateMax, st->zCoordinateMin, st->zCoordinateMax, iter1->second->Profile2->P1->x, iter1->second->Profile2->P1->y, iter1->second->Profile2->P1->z, 0, binaryPos);
 			iter1->second->Profile2->P1->cubeindex = binaryPos;
@@ -1007,7 +1019,7 @@ void checkAreaSolidPos(store *st){
 			pnts.push_back(iter1->second->Profile2->P4);
 			binaryPos = "";
 		}
-		else if(iter1->second->ProfileMod == 2){
+		else if (iter1->second->ProfileMod == 2){
 			string binaryPos;
 			binaryPos = checkSection(st->xCoordinateMin, st->xCoordinateMax, st->yCoordinateMin, st->yCoordinateMax, st->zCoordinateMin, st->zCoordinateMax, iter1->second->Profile3->t->x, iter1->second->Profile3->t->y, iter1->second->Profile3->t->z, 0, binaryPos);
 			iter1->second->Profile3->t->cubeindex = binaryPos;
@@ -1032,18 +1044,18 @@ void checkAreaSolidPos(store *st){
 		}
 		int atLayer = 3;
 		string Pos = pnts[0]->cubeindex;
-		for(vector<CartesianPoint *>::iterator iter2 = pnts.begin(); iter2 != pnts.end() && atLayer >= 1; iter2++){
-			if((*iter2)->cubeindex.substr(0, atLayer) != Pos){
+		for (vector<CartesianPoint *>::iterator iter2 = pnts.begin(); iter2 != pnts.end() && atLayer >= 1; iter2++){
+			if ((*iter2)->cubeindex.substr(0, atLayer) != Pos){
 				string Pos1 = (*iter2)->cubeindex.substr(0, atLayer - 1);
 				string Pos2 = Pos.substr(0, atLayer - 1);
-				if(Pos1 == Pos2){
+				if (Pos1 == Pos2){
 					Pos = Pos1;
 					atLayer--;
 				}
 				else{
 					Pos1 = (*iter2)->cubeindex.substr(0, atLayer - 2);
 					Pos2 = Pos.substr(0, atLayer - 2);
-					if(Pos1 == Pos2){
+					if (Pos1 == Pos2){
 						Pos = Pos1;
 						atLayer -= 2;
 					}
@@ -1062,22 +1074,22 @@ void checkAreaSolidPos(store *st){
 // Doesn't adjust the coordinate according to the geometric context
 void checkShaperRepresentationPos(store *st){
 	int atLayer = 3;
-	 //0 is AreSolid, 1 is pLine, 2 is FacetedBrep, 9 is unincluded Model
-	for(unordered_map<int, ShapeRepresentation *>::iterator iter = st->IFCSHAPEREPRESENTATION_hash.begin(); iter != st->IFCSHAPEREPRESENTATION_hash.end(); iter++){
-		if(iter->second->ShapeMod == 0){
+	//0 is AreaSolid, 1 is pLine, 2 is FacetedBrep, 3 is ShellBasedSurfaceModel, 4 is GeometricCurveset, 9 is unincluded Model
+	for (unordered_map<int, ShapeRepresentation *>::iterator iter = st->IFCSHAPEREPRESENTATION_hash.begin(); iter != st->IFCSHAPEREPRESENTATION_hash.end(); iter++){
+		if (iter->second->ShapeMod == 0){
 			string Pos = iter->second->aSolid[0]->cubeindex;
-			for(int i = 0; i != iter->second->aSolid.size(); i++){				
-				if(iter->second->aSolid[i]->cubeindex.substr(0, atLayer) != Pos){
+			for (int i = 0; i != iter->second->aSolid.size(); i++){
+				if (iter->second->aSolid[i]->cubeindex.substr(0, atLayer) != Pos){
 					string Pos1 = iter->second->aSolid[i]->cubeindex.substr(0, atLayer - 1);
 					string Pos2 = Pos.substr(0, atLayer - 1);
-					if(Pos1 == Pos2){
+					if (Pos1 == Pos2){
 						Pos = Pos1;
 						atLayer--;
 					}
 					else{
 						Pos1 = iter->second->aSolid[i]->cubeindex.substr(0, atLayer - 2);
 						Pos2 = Pos.substr(0, atLayer - 2);
-						if(Pos1 == Pos2){
+						if (Pos1 == Pos2){
 							Pos = Pos1;
 							atLayer -= 2;
 						}
@@ -1090,9 +1102,9 @@ void checkShaperRepresentationPos(store *st){
 			}
 			iter->second->cubeindex = Pos;
 		}
-		else if(iter->second->ShapeMod == 1){
-			if(iter->second->GeometricMod == 0){
-				for(int i = 0; i != iter->second->pLine->Points.size(); i++){
+		else if (iter->second->ShapeMod == 1){
+			if (iter->second->GeometricMod == 0){
+				for (int i = 0; i != iter->second->pLine->Points.size(); i++){
 					CartesianPoint *pnt = CountAbsCoordinate(iter->second->GRC->Axis->Directions1, iter->second->GRC->Axis->Directions2, iter->second->pLine->Points[i]);
 
 					pnt->x += iter->second->GRC->Axis->originalPoint->x;
@@ -1101,12 +1113,12 @@ void checkShaperRepresentationPos(store *st){
 
 					pnt->is3D = true;
 
-					st->xCoordinateMax = st->xCoordinateMax > pnt->x? st->xCoordinateMax : pnt->x;
-					st->xCoordinateMin = st->xCoordinateMin < pnt->x? st->xCoordinateMin : pnt->x;
-					st->yCoordinateMax = st->yCoordinateMax > pnt->y? st->yCoordinateMax : pnt->y;
-					st->yCoordinateMin = st->yCoordinateMin < pnt->y? st->yCoordinateMin : pnt->y;
-					st->zCoordinateMax = st->zCoordinateMax > pnt->z? st->zCoordinateMax : pnt->z;
-					st->zCoordinateMin = st->zCoordinateMin < pnt->z? st->zCoordinateMin : pnt->z;
+					st->xCoordinateMax = st->xCoordinateMax > pnt->x ? st->xCoordinateMax : pnt->x;
+					st->xCoordinateMin = st->xCoordinateMin < pnt->x ? st->xCoordinateMin : pnt->x;
+					st->yCoordinateMax = st->yCoordinateMax > pnt->y ? st->yCoordinateMax : pnt->y;
+					st->yCoordinateMin = st->yCoordinateMin < pnt->y ? st->yCoordinateMin : pnt->y;
+					st->zCoordinateMax = st->zCoordinateMax > pnt->z ? st->zCoordinateMax : pnt->z;
+					st->zCoordinateMin = st->zCoordinateMin < pnt->z ? st->zCoordinateMin : pnt->z;
 					string binaryPos;
 					pnt->cubeindex = checkSection(st->xCoordinateMin, st->xCoordinateMax, st->yCoordinateMin, st->yCoordinateMax, st->zCoordinateMin, st->zCoordinateMax, pnt->x, pnt->y, pnt->z, 0, binaryPos);
 
@@ -1114,8 +1126,8 @@ void checkShaperRepresentationPos(store *st){
 				}
 
 			}
-			else if(iter->second->GeometricMod == 1){
-				for(int i = 0; i != iter->second->pLine->Points.size(); i++){
+			else if (iter->second->GeometricMod == 1){
+				for (int i = 0; i != iter->second->pLine->Points.size(); i++){
 					CartesianPoint *pnt = CountAbsCoordinate(iter->second->GRSC->GRC->Axis->Directions1, iter->second->GRSC->GRC->Axis->Directions2, iter->second->pLine->Points[i]);
 
 					pnt->x += iter->second->GRSC->GRC->Axis->originalPoint->x;
@@ -1124,31 +1136,31 @@ void checkShaperRepresentationPos(store *st){
 
 					pnt->is3D = true;
 
-					st->xCoordinateMax = st->xCoordinateMax > pnt->x? st->xCoordinateMax : pnt->x;
-					st->xCoordinateMin = st->xCoordinateMin < pnt->x? st->xCoordinateMin : pnt->x;
-					st->yCoordinateMax = st->yCoordinateMax > pnt->y? st->yCoordinateMax : pnt->y;
-					st->yCoordinateMin = st->yCoordinateMin < pnt->y? st->yCoordinateMin : pnt->y;
-					st->zCoordinateMax = st->zCoordinateMax > pnt->z? st->zCoordinateMax : pnt->z;
-					st->zCoordinateMin = st->zCoordinateMin < pnt->z? st->zCoordinateMin : pnt->z;	
+					st->xCoordinateMax = st->xCoordinateMax > pnt->x ? st->xCoordinateMax : pnt->x;
+					st->xCoordinateMin = st->xCoordinateMin < pnt->x ? st->xCoordinateMin : pnt->x;
+					st->yCoordinateMax = st->yCoordinateMax > pnt->y ? st->yCoordinateMax : pnt->y;
+					st->yCoordinateMin = st->yCoordinateMin < pnt->y ? st->yCoordinateMin : pnt->y;
+					st->zCoordinateMax = st->zCoordinateMax > pnt->z ? st->zCoordinateMax : pnt->z;
+					st->zCoordinateMin = st->zCoordinateMin < pnt->z ? st->zCoordinateMin : pnt->z;
 					string binaryPos;
 					pnt->cubeindex = checkSection(st->xCoordinateMin, st->xCoordinateMax, st->yCoordinateMin, st->yCoordinateMax, st->zCoordinateMin, st->zCoordinateMax, pnt->x, pnt->y, pnt->z, 0, binaryPos);
-					
+
 					iter->second->pLine->Points[i] = pnt;
 				}
 			}
 			string Pos = iter->second->pLine->Points[0]->cubeindex;
-			for(int i = 0; i != iter->second->pLine->Points.size(); i++){				
-				if(iter->second->pLine->Points[i]->cubeindex != Pos){
+			for (int i = 0; i != iter->second->pLine->Points.size(); i++){
+				if (iter->second->pLine->Points[i]->cubeindex != Pos){
 					string Pos1 = iter->second->pLine->Points[i]->cubeindex.substr(0, atLayer - 1);
 					string Pos2 = Pos.substr(0, atLayer - 1);
-					if(Pos1 == Pos2){
+					if (Pos1 == Pos2){
 						Pos = Pos1;
 						atLayer--;
 					}
 					else{
 						Pos1 = iter->second->pLine->Points[i]->cubeindex.substr(0, atLayer - 2);
 						Pos2 = Pos.substr(0, atLayer - 2);
-						if(Pos1 == Pos2){
+						if (Pos1 == Pos2){
 							Pos = Pos1;
 							atLayer -= 2;
 						}
@@ -1161,20 +1173,20 @@ void checkShaperRepresentationPos(store *st){
 			}
 			iter->second->cubeindex = Pos;
 		}
-		else if(iter->second->ShapeMod == 2){
+		else if (iter->second->ShapeMod == 2){
 			string Pos = iter->second->fBs[0]->cubeindex;
-			for(int i = 0; i != iter->second->fBs.size(); i++){				
-				if(iter->second->fBs[i]->cubeindex.substr(0, atLayer) != Pos){
+			for (int i = 0; i != iter->second->fBs.size(); i++){
+				if (iter->second->fBs[i]->cubeindex.substr(0, atLayer) != Pos){
 					string Pos1 = iter->second->fBs[i]->cubeindex.substr(0, atLayer - 1);
 					string Pos2 = Pos.substr(0, atLayer - 1);
-					if(Pos1 == Pos2){
+					if (Pos1 == Pos2){
 						Pos = Pos1;
 						atLayer--;
 					}
 					else{
 						Pos1 = iter->second->fBs[i]->cubeindex.substr(0, atLayer - 2);
 						Pos2 = Pos.substr(0, atLayer - 2);
-						if(Pos1 == Pos2){
+						if (Pos1 == Pos2){
 							Pos = Pos1;
 							atLayer -= 2;
 						}
@@ -1187,9 +1199,11 @@ void checkShaperRepresentationPos(store *st){
 			}
 			iter->second->cubeindex = Pos;
 		}
-		else if(iter->second->ShapeMod == 3){
+		else if (iter->second->ShapeMod == 3){
 			string Pos = iter->second->model->cubeindex;
 			iter->second->cubeindex = Pos;
+		}
+		else if (iter->second->ShapeMod == 4){
 		}
 		else{
 		}
@@ -1216,16 +1230,16 @@ void ReadIFCDIRECTION(store *st, string file){
 	ifstream in(file);
 	string line;
 
-	if(in){
-		while(getline(in, line)){
+	if (in){
+		while (getline(in, line)){
 			int Pos = 0, lineNumber;
-			if(line.empty())
+			if (line.empty())
 				continue;
-			else if(line[Pos] == '#'){
+			else if (line[Pos] == '#'){
 				Pos++;
 				lineNumber = line[Pos++] - '0';
-				while(Pos != line.length()){
-					if(isdigit(line[Pos])){
+				while (Pos != line.length()){
+					if (isdigit(line[Pos])){
 						lineNumber *= 10;
 						lineNumber += (line[Pos++] - '0');
 					}
@@ -1235,7 +1249,7 @@ void ReadIFCDIRECTION(store *st, string file){
 			}
 			else
 				continue;
-			if(isContain(line, "IFCDIRECTION"))
+			if (isContain(line, "IFCDIRECTION"))
 			{
 				int countedNum = 0, expDigits = 0, decimalDigits = 0;
 				double coordinate = 0;
@@ -1245,12 +1259,12 @@ void ReadIFCDIRECTION(store *st, string file){
 				bool isMinus = false;
 				bool exp = false;
 				bool expMinus = false;
-				while(Pos != line.length()){
-					if(isdigit(line[Pos])){
-						while(Pos != line.length() && (isdigit(line[Pos]) || line[Pos] == 'E' || line[Pos] == '-' || line[Pos] == '.')){
-							if(isdigit(line[Pos])){
-								if(!exp){
-									if(!isDecimal){
+				while (Pos != line.length()){
+					if (isdigit(line[Pos])){
+						while (Pos != line.length() && (isdigit(line[Pos]) || line[Pos] == 'E' || line[Pos] == '-' || line[Pos] == '.')){
+							if (isdigit(line[Pos])){
+								if (!exp){
+									if (!isDecimal){
 										coordinate *= 10;
 										coordinate += (line[Pos++] - '0');
 									}
@@ -1259,13 +1273,13 @@ void ReadIFCDIRECTION(store *st, string file){
 									}
 								}
 								else
-									expDigits = !expMinus? (line[Pos++] - '0') : -(line[Pos++] - '0');
+									expDigits = !expMinus ? (line[Pos++] - '0') : -(line[Pos++] - '0');
 							}
-							else if(line[Pos] == 'E'){
+							else if (line[Pos] == 'E'){
 								exp = true;
 								Pos++;
 							}
-							else if(line[Pos] == '-'){
+							else if (line[Pos] == '-'){
 								expMinus = true;
 								Pos++;
 							}
@@ -1275,9 +1289,9 @@ void ReadIFCDIRECTION(store *st, string file){
 								Pos++;
 							}
 						}
-						if(exp)
+						if (exp)
 							coordinate *= pow(10.0, expDigits);
-						if(isMinus)
+						if (isMinus)
 							coordinate *= -1;
 						coordinateXYZ.push_back(coordinate);
 						coordinate = 0;
@@ -1287,7 +1301,7 @@ void ReadIFCDIRECTION(store *st, string file){
 						exp = false;
 						expMinus = false;
 					}
-					else if(line[Pos] == '-'){
+					else if (line[Pos] == '-'){
 						isMinus = true;
 						Pos++;
 					}
@@ -1296,7 +1310,7 @@ void ReadIFCDIRECTION(store *st, string file){
 				}
 				d->x = coordinateXYZ[0];
 				d->y = coordinateXYZ[1];
-				if(coordinateXYZ.size() > 2){
+				if (coordinateXYZ.size() > 2){
 					d->z = coordinateXYZ[2];
 					d->is3D = true;
 				}
@@ -1320,16 +1334,16 @@ void ReadIFCDIRECTION(store *st, string file){
 void ReadIFCAXIS2PLACEMENT3D(store *st, string file){
 	ifstream in(file);
 	string line;
-	if(in){
-		while(getline(in, line)){
+	if (in){
+		while (getline(in, line)){
 			int Pos = 0, lineNumber;
-			if(line.empty())
+			if (line.empty())
 				continue;
-			else if(line[Pos] == '#'){
+			else if (line[Pos] == '#'){
 				Pos++;
 				lineNumber = line[Pos++] - '0';
-				while(Pos != line.length()){
-					if(isdigit(line[Pos])){
+				while (Pos != line.length()){
+					if (isdigit(line[Pos])){
 						lineNumber *= 10;
 						lineNumber += (line[Pos++] - '0');
 					}
@@ -1339,24 +1353,24 @@ void ReadIFCAXIS2PLACEMENT3D(store *st, string file){
 			}
 			else
 				continue;
-			if(isContain(line, "IFCAXIS2PLACEMENT3D"))
+			if (isContain(line, "IFCAXIS2PLACEMENT3D"))
 			{
 				int drctNumber = 0, storeNumbers = 0;
 				Axis2Placement3D *A2P = new Axis2Placement3D();
-				while(Pos != line.length()){
-					if(line[Pos] == '#'){
+				while (Pos != line.length()){
+					if (line[Pos] == '#'){
 						Pos++;
-						while(Pos != line.length() && isdigit(line[Pos])){
+						while (Pos != line.length() && isdigit(line[Pos])){
 							drctNumber *= 10;
 							drctNumber += (line[Pos++] - '0');
 						}
-						if(storeNumbers == 0){
+						if (storeNumbers == 0){
 							A2P->originalPoint->x = 1;
 							A2P->originalPoint->x = st->IFCCARTESIANPOINT_hash[drctNumber]->x;
 							A2P->originalPoint->y = st->IFCCARTESIANPOINT_hash[drctNumber]->y;
 							A2P->originalPoint->z = st->IFCCARTESIANPOINT_hash[drctNumber]->z;
 						}
-						else if(storeNumbers == 1){
+						else if (storeNumbers == 1){
 							A2P->Directions1->x = st->IFCDIRECTION_hash[drctNumber]->x;
 							A2P->Directions1->y = st->IFCDIRECTION_hash[drctNumber]->y;
 							A2P->Directions1->z = st->IFCDIRECTION_hash[drctNumber]->z;
@@ -1369,13 +1383,13 @@ void ReadIFCAXIS2PLACEMENT3D(store *st, string file){
 						storeNumbers++;
 						drctNumber = 0;
 					}
-					else if(line[Pos] == '$'){						
-						if(storeNumbers == 0){
+					else if (line[Pos] == '$'){
+						if (storeNumbers == 0){
 							A2P->originalPoint->x = 0;
 							A2P->originalPoint->y = 0;
 							A2P->originalPoint->z = 0;
 						}
-						else if(storeNumbers == 1){
+						else if (storeNumbers == 1){
 							A2P->Directions1->x = 0;
 							A2P->Directions1->y = 0;
 							A2P->Directions1->z = 0;
@@ -1407,16 +1421,16 @@ void ReadIFCAXIS2PLACEMENT3D(store *st, string file){
 void ReadIFCPLANE(store *st, string file){
 	ifstream in(file);
 	string line;
-	if(in){
-		while(getline(in, line)){
+	if (in){
+		while (getline(in, line)){
 			int Pos = 0, lineNumber;
-			if(line.empty())
+			if (line.empty())
 				continue;
-			else if(line[Pos] == '#'){
+			else if (line[Pos] == '#'){
 				Pos++;
 				lineNumber = line[Pos++] - '0';
-				while(Pos != line.length()){
-					if(isdigit(line[Pos])){
+				while (Pos != line.length()){
+					if (isdigit(line[Pos])){
 						lineNumber *= 10;
 						lineNumber += (line[Pos++] - '0');
 					}
@@ -1426,26 +1440,26 @@ void ReadIFCPLANE(store *st, string file){
 			}
 			else
 				continue;
-			if(isContain(line, "IFCPLANE") && !isContain(line, "IFCPLANEANGLEMEASURE")){
-					int planeNumber = 0;
-					Plane *plane = new Plane();
-					while(Pos != line.length()){
-						if(line[Pos] == '#'){
-							Pos++;
-							while(Pos != line.length() && isdigit(line[Pos])){
-								planeNumber *= 10;
-								planeNumber += (line[Pos++] - '0');
-							}
+			if (isContain(line, "IFCPLANE") && !isContain(line, "IFCPLANEANGLEMEASURE")){
+				int planeNumber = 0;
+				Plane *plane = new Plane();
+				while (Pos != line.length()){
+					if (line[Pos] == '#'){
+						Pos++;
+						while (Pos != line.length() && isdigit(line[Pos])){
+							planeNumber *= 10;
+							planeNumber += (line[Pos++] - '0');
 						}
-						else
-							Pos++;
 					}
-					plane->Axis = st->IFCAXIS2PLACEMENT3D_hash[planeNumber];
+					else
+						Pos++;
+				}
+				plane->Axis = st->IFCAXIS2PLACEMENT3D_hash[planeNumber];
 
-					std::pair<int, string> cppair1(lineNumber, "IFCARBITRARYCLOSEDPROFILEDEF");
-					std::pair<int, Plane *> cppair2(lineNumber, plane);
-					st->Main_hash.insert(cppair1);
-					st->IFCPLANE_hash.insert(cppair2);
+				std::pair<int, string> cppair1(lineNumber, "IFCARBITRARYCLOSEDPROFILEDEF");
+				std::pair<int, Plane *> cppair2(lineNumber, plane);
+				st->Main_hash.insert(cppair1);
+				st->IFCPLANE_hash.insert(cppair2);
 			}
 		}
 	}
@@ -1454,16 +1468,16 @@ void ReadIFCPLANE(store *st, string file){
 void ReadIFCAXIS2PLACEMENT2D(store *st, string file){
 	ifstream in(file);
 	string line;
-	if(in){
-		while(getline(in, line)){
+	if (in){
+		while (getline(in, line)){
 			int Pos = 0, lineNumber;
-			if(line.empty())
+			if (line.empty())
 				continue;
-			else if(line[Pos] == '#'){
+			else if (line[Pos] == '#'){
 				Pos++;
 				lineNumber = line[Pos++] - '0';
-				while(Pos != line.length()){
-					if(isdigit(line[Pos])){
+				while (Pos != line.length()){
+					if (isdigit(line[Pos])){
 						lineNumber *= 10;
 						lineNumber += (line[Pos++] - '0');
 					}
@@ -1473,18 +1487,18 @@ void ReadIFCAXIS2PLACEMENT2D(store *st, string file){
 			}
 			else
 				continue;
-			if(isContain(line, "IFCAXIS2PLACEMENT2D"))
+			if (isContain(line, "IFCAXIS2PLACEMENT2D"))
 			{
 				int drctNumber = 0, storeNumbers = 0;
 				Axis2Placement2D *A2P = new Axis2Placement2D();
-				while(Pos != line.length()){
-					if(line[Pos] == '#'){
+				while (Pos != line.length()){
+					if (line[Pos] == '#'){
 						Pos++;
-						while(Pos != line.length() && isdigit(line[Pos])){
+						while (Pos != line.length() && isdigit(line[Pos])){
 							drctNumber *= 10;
 							drctNumber += (line[Pos++] - '0');
 						}
-						if(storeNumbers == 0){
+						if (storeNumbers == 0){
 							A2P->point = st->IFCCARTESIANPOINT_hash[drctNumber];
 						}
 						else{
@@ -1493,8 +1507,8 @@ void ReadIFCAXIS2PLACEMENT2D(store *st, string file){
 						storeNumbers++;
 						drctNumber = 0;
 					}
-					else if(line[Pos] == '$'){						
-						if(storeNumbers == 0){
+					else if (line[Pos] == '$'){
+						if (storeNumbers == 0){
 							A2P->point->x = 0;
 							A2P->point->y = 0;
 							A2P->point->z = 0;
@@ -1512,19 +1526,19 @@ void ReadIFCAXIS2PLACEMENT2D(store *st, string file){
 				}
 
 				Direction *dir = new Direction();
-				if(A2P->direction1->x >= 0 && A2P->direction1->y >= 0){
+				if (A2P->direction1->x >= 0 && A2P->direction1->y >= 0){
 					dir->x = -A2P->direction1->y;
 					dir->y = A2P->direction1->x;
 				}
-				else if(A2P->direction1->x < 0 && A2P->direction1->y >= 0){
+				else if (A2P->direction1->x < 0 && A2P->direction1->y >= 0){
 					dir->x = A2P->direction1->y;
 					dir->y = -A2P->direction1->x;
 				}
-				else if(A2P->direction1->x >= 0 && A2P->direction1->y < 0){
+				else if (A2P->direction1->x >= 0 && A2P->direction1->y < 0){
 					dir->x = -A2P->direction1->y;
 					dir->y = A2P->direction1->x;
 				}
-				else if(A2P->direction1->x < 0 && A2P->direction1->y < 0){
+				else if (A2P->direction1->x < 0 && A2P->direction1->y < 0){
 					dir->x = A2P->direction1->y;
 					dir->y = -A2P->direction1->x;
 				}
@@ -1546,16 +1560,16 @@ void ReadIFCAXIS2PLACEMENT2D(store *st, string file){
 void ReadIFCLOCALPLACEMENT(store *st, string file){
 	ifstream in(file);
 	string line;
-	if(in){
-		while(getline(in, line)){
+	if (in){
+		while (getline(in, line)){
 			int Pos = 0, lineNumber;
-			if(line.empty())
+			if (line.empty())
 				continue;
-			else if(line[Pos] == '#'){
+			else if (line[Pos] == '#'){
 				Pos++;
 				lineNumber = line[Pos++] - '0';
-				while(Pos != line.length()){
-					if(isdigit(line[Pos])){
+				while (Pos != line.length()){
+					if (isdigit(line[Pos])){
 						lineNumber *= 10;
 						lineNumber += (line[Pos++] - '0');
 					}
@@ -1565,29 +1579,29 @@ void ReadIFCLOCALPLACEMENT(store *st, string file){
 			}
 			else
 				continue;
-			if(isContain(line, "IFCLOCALPLACEMENT"))
+			if (isContain(line, "IFCLOCALPLACEMENT"))
 			{
 				int ParaNumber = 0, storeNumbers = 0, lastLocalPlacementNum = 0;
 				LocalPlacement *LP = new LocalPlacement();
 				double lastoriginalPointX = 0;
 				double lastoriginalPointY = 0;
 				double lastoriginalPointZ = 0;
-				bool noLastPlacement = false;				
-				while(Pos != line.length()){
-					if(line[Pos] == '#'){
+				bool noLastPlacement = false;
+				while (Pos != line.length()){
+					if (line[Pos] == '#'){
 						Pos++;
-						while(Pos != line.length() && isdigit(line[Pos])){
+						while (Pos != line.length() && isdigit(line[Pos])){
 							ParaNumber *= 10;
 							ParaNumber += (line[Pos++] - '0');
 						}
-						if(storeNumbers == 0){
+						if (storeNumbers == 0){
 							lastoriginalPointX = st->IFCLOCALPLACEMENT_hash[ParaNumber]->originalPoint->x;
 							lastoriginalPointY = st->IFCLOCALPLACEMENT_hash[ParaNumber]->originalPoint->y;
 							lastoriginalPointZ = st->IFCLOCALPLACEMENT_hash[ParaNumber]->originalPoint->z;
 							lastLocalPlacementNum = ParaNumber;
 						}
 						else{// $ problem
-							if(!noLastPlacement)
+							if (!noLastPlacement)
 								LP->originalPoint = CountAbsCoordinate(st->IFCLOCALPLACEMENT_hash[lastLocalPlacementNum]->Directions1, st->IFCLOCALPLACEMENT_hash[lastLocalPlacementNum]->Directions2, st->IFCAXIS2PLACEMENT3D_hash[ParaNumber]->originalPoint);
 							else{
 
@@ -1607,8 +1621,8 @@ void ReadIFCLOCALPLACEMENT(store *st, string file){
 						storeNumbers++;
 						ParaNumber = 0;
 					}
-					else if(line[Pos] == '$'){						
-						if(storeNumbers == 0){
+					else if (line[Pos] == '$'){
+						if (storeNumbers == 0){
 							LP->originalPoint->x = 0;
 							LP->originalPoint->y = 0;
 							LP->originalPoint->z = 0;
@@ -1643,16 +1657,16 @@ void ReadIFCCARTESIANPOINT(store *st, string file){
 	st->xCoordinateMin = INT_MAX;
 	st->yCoordinateMin = INT_MAX;
 	st->zCoordinateMin = INT_MAX;
-	if(in){
-		while(getline(in, line)){
+	if (in){
+		while (getline(in, line)){
 			int Pos = 0, lineNumber;
-			if(line.empty())
+			if (line.empty())
 				continue;
-			else if(line[Pos] == '#'){
+			else if (line[Pos] == '#'){
 				Pos++;
 				lineNumber = line[Pos++] - '0';
-				while(Pos != line.length()){
-					if(isdigit(line[Pos])){
+				while (Pos != line.length()){
+					if (isdigit(line[Pos])){
 						lineNumber *= 10;
 						lineNumber += (line[Pos++] - '0');
 					}
@@ -1662,7 +1676,7 @@ void ReadIFCCARTESIANPOINT(store *st, string file){
 			}
 			else
 				continue;
-			if(isContain(line, "IFCCARTESIANPOINT"))
+			if (isContain(line, "IFCCARTESIANPOINT"))
 			{
 				int countedNum = 0, decimalDigits = 0;
 				double coordinate = 0;
@@ -1670,11 +1684,11 @@ void ReadIFCCARTESIANPOINT(store *st, string file){
 				vector<double> coordinateXYZ;
 				bool isDecimal = false;
 				bool isMinus = false;
-				while(Pos != line.length()){
-					if(isdigit(line[Pos])){
-						while(Pos != line.length() && (isdigit(line[Pos]) || line[Pos] == '.')){
-							if(isdigit(line[Pos])){
-								if(!isDecimal){
+				while (Pos != line.length()){
+					if (isdigit(line[Pos])){
+						while (Pos != line.length() && (isdigit(line[Pos]) || line[Pos] == '.')){
+							if (isdigit(line[Pos])){
+								if (!isDecimal){
 									coordinate *= 10;
 									coordinate += (line[Pos++] - '0');
 								}
@@ -1688,7 +1702,7 @@ void ReadIFCCARTESIANPOINT(store *st, string file){
 								Pos++;
 							}
 						}
-						if(isMinus)
+						if (isMinus)
 							coordinate *= -1;
 						coordinateXYZ.push_back(coordinate);
 						coordinate = 0;
@@ -1696,7 +1710,7 @@ void ReadIFCCARTESIANPOINT(store *st, string file){
 						isDecimal = false;
 						isMinus = false;
 					}
-					else if(line[Pos] == '-'){
+					else if (line[Pos] == '-'){
 						isMinus = true;
 						Pos++;
 					}
@@ -1705,20 +1719,20 @@ void ReadIFCCARTESIANPOINT(store *st, string file){
 				}
 
 				p->x = coordinateXYZ[0];
-				st->xCoordinateMax = st->xCoordinateMax > p->x? st->xCoordinateMax : p->x;
-				st->xCoordinateMin = st->xCoordinateMin < p->x? st->xCoordinateMin : p->x;
+				st->xCoordinateMax = st->xCoordinateMax > p->x ? st->xCoordinateMax : p->x;
+				st->xCoordinateMin = st->xCoordinateMin < p->x ? st->xCoordinateMin : p->x;
 				p->y = coordinateXYZ[1];
-				st->yCoordinateMax = st->yCoordinateMax > p->y? st->yCoordinateMax : p->y;
-				st->yCoordinateMin = st->yCoordinateMin < p->y? st->yCoordinateMin : p->y;
-				if(coordinateXYZ.size() > 2){
+				st->yCoordinateMax = st->yCoordinateMax > p->y ? st->yCoordinateMax : p->y;
+				st->yCoordinateMin = st->yCoordinateMin < p->y ? st->yCoordinateMin : p->y;
+				if (coordinateXYZ.size() > 2){
 					p->z = coordinateXYZ[2];
-					st->zCoordinateMax = st->zCoordinateMax > p->z? st->zCoordinateMax : p->z;
-					st->zCoordinateMin = st->zCoordinateMin < p->z? st->zCoordinateMin : p->z;
+					st->zCoordinateMax = st->zCoordinateMax > p->z ? st->zCoordinateMax : p->z;
+					st->zCoordinateMin = st->zCoordinateMin < p->z ? st->zCoordinateMin : p->z;
 					p->is3D = true;
 				}
 				else
 					p->is3D = false;
-				
+
 				std::pair<int, string> cppair1(lineNumber, "IFCCARTESIANPOINT");
 				std::pair<int, CartesianPoint *> cppair2(lineNumber, p);
 				st->Main_hash.insert(cppair1);
@@ -1736,16 +1750,16 @@ void ReadIFCCARTESIANPOINT(store *st, string file){
 void ReadIFCPOLYLINE(store *st, string file){
 	ifstream in(file);
 	string line;
-	if(in){
-		while(getline(in, line)){
+	if (in){
+		while (getline(in, line)){
 			int Pos = 0, lineNumber;
-			if(line.empty())
+			if (line.empty())
 				continue;
-			else if(line[Pos] == '#'){
+			else if (line[Pos] == '#'){
 				Pos++;
 				lineNumber = line[Pos++] - '0';
-				while(Pos != line.length()){
-					if(isdigit(line[Pos])){
+				while (Pos != line.length()){
+					if (isdigit(line[Pos])){
 						lineNumber *= 10;
 						lineNumber += (line[Pos++] - '0');
 					}
@@ -1755,15 +1769,15 @@ void ReadIFCPOLYLINE(store *st, string file){
 			}
 			else
 				continue;
-			if(isContain(line, "IFCPOLYLINE"))
+			if (isContain(line, "IFCPOLYLINE"))
 			{
 				int pntNumber = 0;
 				CartesianPoint pnt;
 				PolyLine *pLine = new PolyLine();
-				while(Pos != line.length()){
-					if(line[Pos] == '#'){
+				while (Pos != line.length()){
+					if (line[Pos] == '#'){
 						Pos++;
-						while(Pos != line.length() && isdigit(line[Pos])){
+						while (Pos != line.length() && isdigit(line[Pos])){
 							pntNumber *= 10;
 							pntNumber += (line[Pos++] - '0');
 						}
@@ -1786,19 +1800,19 @@ void ReadIFCPOLYLINE(store *st, string file){
 	}
 }
 
-void ReadIFCPOLYLOOP(store *st, string file){
+void ReadIFCGEOMETRICCURVESET(store *st, string file){
 	ifstream in(file);
 	string line;
-	if(in){
-		while(getline(in, line)){
+	if (in){
+		while (getline(in, line)){
 			int Pos = 0, lineNumber;
-			if(line.empty())
+			if (line.empty())
 				continue;
-			else if(line[Pos] == '#'){
+			else if (line[Pos] == '#'){
 				Pos++;
 				lineNumber = line[Pos++] - '0';
-				while(Pos != line.length()){
-					if(isdigit(line[Pos])){
+				while (Pos != line.length()){
+					if (isdigit(line[Pos])){
 						lineNumber *= 10;
 						lineNumber += (line[Pos++] - '0');
 					}
@@ -1808,15 +1822,62 @@ void ReadIFCPOLYLOOP(store *st, string file){
 			}
 			else
 				continue;
-			if(isContain(line, "IFCPOLYLOOP"))
+			if (isContain(line, "IFCGEOMETRICCURVESET")){
+				int plineNumber = 0;
+				GeometricCurveset *curveset = new GeometricCurveset();
+				while (Pos != line.length()){
+					if (line[Pos] == '#'){
+						Pos++;
+						while (Pos != line.length() && isdigit(line[Pos])){
+							plineNumber *= 10;
+							plineNumber += (line[Pos++] - '0');
+						}
+					}
+					else
+						Pos++;
+				}
+				curveset->pLine = st->IFCPOLYLINE_hash[plineNumber];
+
+				std::pair<int, string> cppair1(lineNumber, "IFCGEOMETRICCURVESET");
+				std::pair<int, GeometricCurveset *> cppair2(lineNumber, curveset);
+				st->Main_hash.insert(cppair1);
+				st->IFCGEOMETRICCURVESET_hash.insert(cppair2);
+			}
+		}
+	}
+}
+
+void ReadIFCPOLYLOOP(store *st, string file){
+	ifstream in(file);
+	string line;
+	if (in){
+		while (getline(in, line)){
+			int Pos = 0, lineNumber;
+			if (line.empty())
+				continue;
+			else if (line[Pos] == '#'){
+				Pos++;
+				lineNumber = line[Pos++] - '0';
+				while (Pos != line.length()){
+					if (isdigit(line[Pos])){
+						lineNumber *= 10;
+						lineNumber += (line[Pos++] - '0');
+					}
+					else
+						break;
+				}
+			}
+			else
+				continue;
+			if (isContain(line, "IFCPOLYLOOP"))
 			{
-				int pntNumber = 0;				
+				int pntNumber = 0;
 				PolyLoop *loop = new PolyLoop();
 				CartesianPoint *pnt;
-				while(Pos != line.length()){
-					if(line[Pos] == '#'){
+				while (Pos != line.length()){
+					if (line[Pos] == '#'){
 						Pos++;
-						while(Pos != line.length() && isdigit(line[Pos])){
+						while (Pos != line.length() && isdigit(line[Pos])){
 							pntNumber *= 10;
 							pntNumber += (line[Pos++] - '0');
 						}
@@ -1826,8 +1887,8 @@ void ReadIFCPOLYLOOP(store *st, string file){
 					}
 					else
 						Pos++;
-				}				
-				
+				}
+
 				std::pair<int, string> lpair1(lineNumber, "IFCPOLYLOOP");
 				std::pair<int, PolyLoop *> lpair2(lineNumber, loop);
 				st->Main_hash.insert(lpair1);
@@ -1840,16 +1901,16 @@ void ReadIFCPOLYLOOP(store *st, string file){
 void ReadIFCARBITRARYCLOSEDPROFILEDEF(store *st, string file){
 	ifstream in(file);
 	string line;
-	if(in){
-		while(getline(in, line)){
+	if (in){
+		while (getline(in, line)){
 			int Pos = 0, lineNumber;
-			if(line.empty())
+			if (line.empty())
 				continue;
-			else if(line[Pos] == '#'){
+			else if (line[Pos] == '#'){
 				Pos++;
 				lineNumber = line[Pos++] - '0';
-				while(Pos != line.length()){
-					if(isdigit(line[Pos])){
+				while (Pos != line.length()){
+					if (isdigit(line[Pos])){
 						lineNumber *= 10;
 						lineNumber += (line[Pos++] - '0');
 					}
@@ -1859,29 +1920,29 @@ void ReadIFCARBITRARYCLOSEDPROFILEDEF(store *st, string file){
 			}
 			else
 				continue;
-			if(isContain(line, "IFCARBITRARYCLOSEDPROFILEDEF")){
-					int plineNumber = 0;
-					ArbitaryClosedProfile *pro = new ArbitaryClosedProfile();
-					while(Pos != line.length()){
-						if(line[Pos] == '#'){
-							Pos++;
-							while(Pos != line.length() && isdigit(line[Pos])){
-								plineNumber *= 10;
-								plineNumber += (line[Pos++] - '0');
-							}
+			if (isContain(line, "IFCARBITRARYCLOSEDPROFILEDEF")){
+				int plineNumber = 0;
+				ArbitaryClosedProfile *pro = new ArbitaryClosedProfile();
+				while (Pos != line.length()){
+					if (line[Pos] == '#'){
+						Pos++;
+						while (Pos != line.length() && isdigit(line[Pos])){
+							plineNumber *= 10;
+							plineNumber += (line[Pos++] - '0');
 						}
-						else
-							Pos++;
 					}
-					pro->pLine = st->IFCPOLYLINE_hash[plineNumber];
+					else
+						Pos++;
+				}
+				pro->pLine = st->IFCPOLYLINE_hash[plineNumber];
 
-					std::pair<int, string> cppair1(lineNumber, "IFCARBITRARYCLOSEDPROFILEDEF");
-					std::pair<int, ArbitaryClosedProfile *> cppair2(lineNumber, pro);
-					st->Main_hash.insert(cppair1);
-					st->IFCARBITRARYCLOSEDPROFILEDEF_hash.insert(cppair2);
+				std::pair<int, string> cppair1(lineNumber, "IFCARBITRARYCLOSEDPROFILEDEF");
+				std::pair<int, ArbitaryClosedProfile *> cppair2(lineNumber, pro);
+				st->Main_hash.insert(cppair1);
+				st->IFCARBITRARYCLOSEDPROFILEDEF_hash.insert(cppair2);
 
-					//st->Main_hash[lineNumber] = "IFCARBITRARYCLOSEDPROFILEDEF";
-					//st->IFCARBITRARYCLOSEDPROFILEDEF_hash[lineNumber] = pro;
+				//st->Main_hash[lineNumber] = "IFCARBITRARYCLOSEDPROFILEDEF";
+				//st->IFCARBITRARYCLOSEDPROFILEDEF_hash[lineNumber] = pro;
 			}
 		}
 	}
@@ -1890,16 +1951,16 @@ void ReadIFCARBITRARYCLOSEDPROFILEDEF(store *st, string file){
 void ReadIFCRECTANGLEPROFILEDEF(store *st, string file){
 	ifstream in(file);
 	string line;
-	if(in){
-		while(getline(in, line)){
+	if (in){
+		while (getline(in, line)){
 			int Pos = 0, lineNumber;
-			if(line.empty())
+			if (line.empty())
 				continue;
-			else if(line[Pos] == '#'){
+			else if (line[Pos] == '#'){
 				Pos++;
 				lineNumber = line[Pos++] - '0';
-				while(Pos != line.length()){
-					if(isdigit(line[Pos])){
+				while (Pos != line.length()){
+					if (isdigit(line[Pos])){
 						lineNumber *= 10;
 						lineNumber += (line[Pos++] - '0');
 					}
@@ -1909,27 +1970,27 @@ void ReadIFCRECTANGLEPROFILEDEF(store *st, string file){
 			}
 			else
 				continue;
-			if(isContain(line, "IFCRECTANGLEPROFILEDEF"))
+			if (isContain(line, "IFCRECTANGLEPROFILEDEF"))
 			{
 				int drctNumber = 0, Dim = 0, decimalDigits = 0;
 				double coordinate = 0;
 				RectangleProfile *rect = new RectangleProfile();
 				bool isDecimal = false;
-				while(Pos != line.length()){
-					if(line[Pos] == '#'){
+				while (Pos != line.length()){
+					if (line[Pos] == '#'){
 						Pos++;
-						while(Pos != line.length() && isdigit(line[Pos])){
+						while (Pos != line.length() && isdigit(line[Pos])){
 							drctNumber *= 10;
 							drctNumber += (line[Pos++] - '0');
 						}
 						rect->axis = st->IFCAXIS2PLACEMENT2D_hash[drctNumber];
 						drctNumber = 0;
 					}
-					else if(isdigit(line[Pos])){						
-						if(Dim == 0){
-							while(Pos != line.length() && (isdigit(line[Pos]) || line[Pos] == '.')){
-								if(isdigit(line[Pos])){
-									if(!isDecimal){
+					else if (isdigit(line[Pos])){
+						if (Dim == 0){
+							while (Pos != line.length() && (isdigit(line[Pos]) || line[Pos] == '.')){
+								if (isdigit(line[Pos])){
+									if (!isDecimal){
 										coordinate *= 10;
 										coordinate += (line[Pos++] - '0');
 									}
@@ -1947,9 +2008,9 @@ void ReadIFCRECTANGLEPROFILEDEF(store *st, string file){
 							Dim++;
 						}
 						else{
-							while(Pos != line.length() && (isdigit(line[Pos]) || line[Pos] == '.')){
-								if(isdigit(line[Pos])){
-									if(!isDecimal){
+							while (Pos != line.length() && (isdigit(line[Pos]) || line[Pos] == '.')){
+								if (isdigit(line[Pos])){
+									if (!isDecimal){
 										coordinate *= 10;
 										coordinate += (line[Pos++] - '0');
 									}
@@ -1982,16 +2043,16 @@ void ReadIFCRECTANGLEPROFILEDEF(store *st, string file){
 				rect->P1->is3D = false;
 
 				rect->P2->x = cos(arc) * rect->xDim;
-				rect->P2->x *= rect->axis->direction1->x >= 0? 1 : -1;
+				rect->P2->x *= rect->axis->direction1->x >= 0 ? 1 : -1;
 				rect->P2->y = sin(arc) * rect->xDim;
-				rect->P2->y *= rect->axis->direction1->y >= 0? 1 : -1;
+				rect->P2->y *= rect->axis->direction1->y >= 0 ? 1 : -1;
 				rect->P2->z = 0;
 				rect->P2->is3D = false;
 
 				rect->P3->x = sin(arc) * rect->yDim;
-				rect->P3->x *= rect->axis->direction2->x >= 0? 1 : -1;
+				rect->P3->x *= rect->axis->direction2->x >= 0 ? 1 : -1;
 				rect->P3->y = cos(arc) * rect->yDim;
-				rect->P3->y *= rect->axis->direction2->y >= 0? 1 : -1;
+				rect->P3->y *= rect->axis->direction2->y >= 0 ? 1 : -1;
 				rect->P3->z = 0;
 				rect->P3->is3D = false;
 
@@ -2015,16 +2076,16 @@ void ReadIFCRECTANGLEPROFILEDEF(store *st, string file){
 void ReadIFCCIRCLEPROFILEDEF(store *st, string file){
 	ifstream in(file);
 	string line;
-	if(in){
-		while(getline(in, line)){
+	if (in){
+		while (getline(in, line)){
 			int Pos = 0, lineNumber;
-			if(line.empty())
+			if (line.empty())
 				continue;
-			else if(line[Pos] == '#'){
+			else if (line[Pos] == '#'){
 				Pos++;
 				lineNumber = line[Pos++] - '0';
-				while(Pos != line.length()){
-					if(isdigit(line[Pos])){
+				while (Pos != line.length()){
+					if (isdigit(line[Pos])){
 						lineNumber *= 10;
 						lineNumber += (line[Pos++] - '0');
 					}
@@ -2034,26 +2095,26 @@ void ReadIFCCIRCLEPROFILEDEF(store *st, string file){
 			}
 			else
 				continue;
-			if(isContain(line, "IFCCIRCLEPROFILEDEF"))
+			if (isContain(line, "IFCCIRCLEPROFILEDEF"))
 			{
 				int drctNumber = 0, Dim = 0, decimalDigits = 0;
 				double coordinate = 0;
 				CircleProfile *circle = new CircleProfile();
 				bool isDecimal = false;
-				while(Pos != line.length()){
-					if(line[Pos] == '#'){
+				while (Pos != line.length()){
+					if (line[Pos] == '#'){
 						Pos++;
-						while(Pos != line.length() && isdigit(line[Pos])){
+						while (Pos != line.length() && isdigit(line[Pos])){
 							drctNumber *= 10;
 							drctNumber += (line[Pos++] - '0');
 						}
 						circle->axis = st->IFCAXIS2PLACEMENT2D_hash[drctNumber];
 						drctNumber = 0;
 					}
-					else if(isdigit(line[Pos])){
-						while(Pos != line.length() && (isdigit(line[Pos]) || line[Pos] == '.')){
-							if(isdigit(line[Pos])){
-								if(!isDecimal){
+					else if (isdigit(line[Pos])){
+						while (Pos != line.length() && (isdigit(line[Pos]) || line[Pos] == '.')){
+							if (isdigit(line[Pos])){
+								if (!isDecimal){
 									coordinate *= 10;
 									coordinate += (line[Pos++] - '0');
 								}
@@ -2084,9 +2145,9 @@ void ReadIFCCIRCLEPROFILEDEF(store *st, string file){
 				double clinedLine = sqrt((circle->axis->point->x * circle->axis->point->x) + (circle->axis->point->y * circle->axis->point->y));
 
 				circle->axis->point->x = cos(arc) * clinedLine;
-				circle->axis->point->x = circle->axis->point->x >= 0? 1 : -1;
+				circle->axis->point->x = circle->axis->point->x >= 0 ? 1 : -1;
 				circle->axis->point->y = sin(arc) * clinedLine;
-				circle->axis->point->y = circle->axis->point->y >= 0? 1 : -1;
+				circle->axis->point->y = circle->axis->point->y >= 0 ? 1 : -1;
 				circle->axis->point->is3D = false;
 
 				circle->t->x = circle->axis->point->x;
@@ -2121,16 +2182,16 @@ void ReadIFCCIRCLEPROFILEDEF(store *st, string file){
 void ReadIFCFACEBOUND(store *st, string file){
 	ifstream in(file);
 	string line;
-	if(in){
-		while(getline(in, line)){
+	if (in){
+		while (getline(in, line)){
 			int Pos = 0, lineNumber;
-			if(line.empty())
+			if (line.empty())
 				continue;
-			else if(line[Pos] == '#'){
+			else if (line[Pos] == '#'){
 				Pos++;
 				lineNumber = line[Pos++] - '0';
-				while(Pos != line.length()){
-					if(isdigit(line[Pos])){
+				while (Pos != line.length()){
+					if (isdigit(line[Pos])){
 						lineNumber *= 10;
 						lineNumber += (line[Pos++] - '0');
 					}
@@ -2140,27 +2201,27 @@ void ReadIFCFACEBOUND(store *st, string file){
 			}
 			else
 				continue;
-			if(isContain(line, "IFCFACEBOUND"))
-				{
-					int loopNumber = 0;
-					FaceBound *bound = new FaceBound();
-					while(Pos != line.length()){
-						if(line[Pos] == '#'){
-							Pos++;
-							while(Pos != line.length() && isdigit(line[Pos])){
-								loopNumber *= 10;
-								loopNumber += (line[Pos++] - '0');
-							}
+			if (isContain(line, "IFCFACEBOUND"))
+			{
+				int loopNumber = 0;
+				FaceBound *bound = new FaceBound();
+				while (Pos != line.length()){
+					if (line[Pos] == '#'){
+						Pos++;
+						while (Pos != line.length() && isdigit(line[Pos])){
+							loopNumber *= 10;
+							loopNumber += (line[Pos++] - '0');
 						}
-						else
-							Pos++;
 					}
-					bound->Loop = st->IFCPOLYLOOP_hash[loopNumber];
-					std::pair<int, string> fbpair1(lineNumber, "IFCFACEBOUND");
-					std::pair<int, FaceBound *> fbpair2(lineNumber, bound);
-					st->Main_hash.insert(fbpair1);
-					st->IFCFACEBOUND_hash.insert(fbpair2);
+					else
+						Pos++;
 				}
+				bound->Loop = st->IFCPOLYLOOP_hash[loopNumber];
+				std::pair<int, string> fbpair1(lineNumber, "IFCFACEBOUND");
+				std::pair<int, FaceBound *> fbpair2(lineNumber, bound);
+				st->Main_hash.insert(fbpair1);
+				st->IFCFACEBOUND_hash.insert(fbpair2);
+			}
 		}
 	}
 }
@@ -2168,16 +2229,16 @@ void ReadIFCFACEBOUND(store *st, string file){
 void ReadIFCFACEOUTERBOUND(store *st, string file){
 	ifstream in(file);
 	string line;
-	if(in){
-		while(getline(in, line)){
+	if (in){
+		while (getline(in, line)){
 			int Pos = 0, lineNumber;
-			if(line.empty())
+			if (line.empty())
 				continue;
-			else if(line[Pos] == '#'){
+			else if (line[Pos] == '#'){
 				Pos++;
 				lineNumber = line[Pos++] - '0';
-				while(Pos != line.length()){
-					if(isdigit(line[Pos])){
+				while (Pos != line.length()){
+					if (isdigit(line[Pos])){
 						lineNumber *= 10;
 						lineNumber += (line[Pos++] - '0');
 					}
@@ -2187,28 +2248,28 @@ void ReadIFCFACEOUTERBOUND(store *st, string file){
 			}
 			else
 				continue;
-			if(isContain(line, "IFCFACEOUTERBOUND"))
-				{
-					int loopNumber = 0;
-					FaceOuterBound *bound = new FaceOuterBound();
-					while(Pos != line.length()){
-						if(line[Pos] == '#'){
-							Pos++;
-							while(Pos != line.length() && isdigit(line[Pos])){
-								loopNumber *= 10;
-								loopNumber += (line[Pos++] - '0');
-							}
+			if (isContain(line, "IFCFACEOUTERBOUND"))
+			{
+				int loopNumber = 0;
+				FaceOuterBound *bound = new FaceOuterBound();
+				while (Pos != line.length()){
+					if (line[Pos] == '#'){
+						Pos++;
+						while (Pos != line.length() && isdigit(line[Pos])){
+							loopNumber *= 10;
+							loopNumber += (line[Pos++] - '0');
 						}
-						else
-							Pos++;
 					}
-					
-					bound->Loop = st->IFCPOLYLOOP_hash[loopNumber];
-					std::pair<int, string> fobpair1(lineNumber, "IFCFACEOUTERBOUND");
-					std::pair<int, FaceOuterBound *> fobpair2(lineNumber, bound);
-					st->Main_hash.insert(fobpair1);
-					st->IFCFACEOUTERBOUND_hash.insert(fobpair2);
+					else
+						Pos++;
 				}
+
+				bound->Loop = st->IFCPOLYLOOP_hash[loopNumber];
+				std::pair<int, string> fobpair1(lineNumber, "IFCFACEOUTERBOUND");
+				std::pair<int, FaceOuterBound *> fobpair2(lineNumber, bound);
+				st->Main_hash.insert(fobpair1);
+				st->IFCFACEOUTERBOUND_hash.insert(fobpair2);
+			}
 		}
 	}
 }
@@ -2216,16 +2277,16 @@ void ReadIFCFACEOUTERBOUND(store *st, string file){
 void ReadIFCFACE(store *st, string file){
 	ifstream in(file);
 	string line;
-	if(in){	
-		while(getline(in, line)){
+	if (in){
+		while (getline(in, line)){
 			int Pos = 0, lineNumber = 0;
-			if(line.empty())
+			if (line.empty())
 				continue;
-			else if(line[Pos] == '#'){
+			else if (line[Pos] == '#'){
 				Pos++;
 				lineNumber = line[Pos++] - '0';
-				while(Pos != line.length()){
-					if(isdigit(line[Pos])){
+				while (Pos != line.length()){
+					if (isdigit(line[Pos])){
 						lineNumber *= 10;
 						lineNumber += (line[Pos++] - '0');
 					}
@@ -2235,24 +2296,24 @@ void ReadIFCFACE(store *st, string file){
 			}
 			else
 				continue;
-			if(isContain(line, "IFCFACE") && !isContain(line, "IFCFACEOUTERBOUND") && !isContain(line, "IFCFACEBOUND") && !isContain(line, "IFCFACETEDBREP")){
+			if (isContain(line, "IFCFACE") && !isContain(line, "IFCFACEOUTERBOUND") && !isContain(line, "IFCFACEBOUND") && !isContain(line, "IFCFACETEDBREP")){
 				int boundNumber = 0;
 				Face *f = new Face();
-				while(Pos != line.length()){
+				while (Pos != line.length()){
 					FaceBound *Bound = new FaceBound();
 					FaceOuterBound *outerBound = new FaceOuterBound();
-					if(line[Pos] == '#'){
+					if (line[Pos] == '#'){
 						Pos++;
-						while(Pos != line.length() && isdigit(line[Pos])){
+						while (Pos != line.length() && isdigit(line[Pos])){
 							boundNumber *= 10;
 							boundNumber += (line[Pos++] - '0');
 						}
-						if(st->Main_hash[boundNumber] == "IFCFACEBOUND"){
+						if (st->Main_hash[boundNumber] == "IFCFACEBOUND"){
 							Bound = st->IFCFACEBOUND_hash[boundNumber];
 							f->FaceMod = 1;
 							f->Bound = Bound;
 						}
-						else if(st->Main_hash[boundNumber] == "IFCFACEOUTERBOUND"){
+						else if (st->Main_hash[boundNumber] == "IFCFACEOUTERBOUND"){
 							outerBound = st->IFCFACEOUTERBOUND_hash[boundNumber];
 							f->FaceMod = 0;
 							f->outerBound = outerBound;
@@ -2276,16 +2337,16 @@ void ReadIFCFACE(store *st, string file){
 void ReadIFCOPENSHELL(store *st, string file){
 	ifstream in(file);
 	string line;
-	if(in){	
-		while(getline(in, line)){
+	if (in){
+		while (getline(in, line)){
 			int Pos = 0, lineNumber;
-			if(line.empty())
+			if (line.empty())
 				continue;
-			else if(line[Pos] == '#'){
+			else if (line[Pos] == '#'){
 				Pos++;
 				lineNumber = line[Pos++] - '0';
-				while(Pos != line.length()){
-					if(isdigit(line[Pos])){
+				while (Pos != line.length()){
+					if (isdigit(line[Pos])){
 						lineNumber *= 10;
 						lineNumber += (line[Pos++] - '0');
 					}
@@ -2295,14 +2356,14 @@ void ReadIFCOPENSHELL(store *st, string file){
 			}
 			else
 				continue;
-			if(isContain(line, "IFCOPENSHELL")){
+			if (isContain(line, "IFCOPENSHELL")){
 				int faceNumber = 0;
 				Face *face = new Face();
 				OpenShell *faces = new OpenShell();
-				while(Pos != line.length()){
-					if(line[Pos] == '#'){
+				while (Pos != line.length()){
+					if (line[Pos] == '#'){
 						Pos++;
-						while(Pos != line.length() && isdigit(line[Pos])){
+						while (Pos != line.length() && isdigit(line[Pos])){
 							faceNumber *= 10;
 							faceNumber += (line[Pos++] - '0');
 						}
@@ -2326,16 +2387,16 @@ void ReadIFCOPENSHELL(store *st, string file){
 void ReadIFCCLOSEDSHELL(store *st, string file){
 	ifstream in(file);
 	string line;
-	if(in){	
-		while(getline(in, line)){
+	if (in){
+		while (getline(in, line)){
 			int Pos = 0, lineNumber;
-			if(line.empty())
+			if (line.empty())
 				continue;
-			else if(line[Pos] == '#'){
+			else if (line[Pos] == '#'){
 				Pos++;
 				lineNumber = line[Pos++] - '0';
-				while(Pos != line.length()){
-					if(isdigit(line[Pos])){
+				while (Pos != line.length()){
+					if (isdigit(line[Pos])){
 						lineNumber *= 10;
 						lineNumber += (line[Pos++] - '0');
 					}
@@ -2345,14 +2406,14 @@ void ReadIFCCLOSEDSHELL(store *st, string file){
 			}
 			else
 				continue;
-			if(isContain(line, "IFCCLOSEDSHELL")){
+			if (isContain(line, "IFCCLOSEDSHELL")){
 				int faceNumber = 0;
 				Face *face = new Face();
 				ClosedShell *faces = new ClosedShell();
-				while(Pos != line.length()){
-					if(line[Pos] == '#'){
+				while (Pos != line.length()){
+					if (line[Pos] == '#'){
 						Pos++;
-						while(Pos != line.length() && isdigit(line[Pos])){
+						while (Pos != line.length() && isdigit(line[Pos])){
 							faceNumber *= 10;
 							faceNumber += (line[Pos++] - '0');
 						}
@@ -2379,16 +2440,16 @@ void ReadIFCCLOSEDSHELL(store *st, string file){
 void ReadIFCSHELLBASEDSURFACEMODEL(store *st, string file){
 	ifstream in(file);
 	string line;
-	if(in){	
-		while(getline(in, line)){
+	if (in){
+		while (getline(in, line)){
 			int Pos = 0, lineNumber;
-			if(line.empty())
+			if (line.empty())
 				continue;
-			else if(line[Pos] == '#'){
+			else if (line[Pos] == '#'){
 				Pos++;
 				lineNumber = line[Pos++] - '0';
-				while(Pos != line.length()){
-					if(isdigit(line[Pos])){
+				while (Pos != line.length()){
+					if (isdigit(line[Pos])){
 						lineNumber *= 10;
 						lineNumber += (line[Pos++] - '0');
 					}
@@ -2398,14 +2459,14 @@ void ReadIFCSHELLBASEDSURFACEMODEL(store *st, string file){
 			}
 			else
 				continue;
-			if(isContain(line, "IFCSHELLBASEDSURFACEMODEL")){
+			if (isContain(line, "IFCSHELLBASEDSURFACEMODEL")){
 				int shellNumber = 0;
 				OpenShell *shell = new OpenShell();
 				ShellBasedSurfaceModel *model = new ShellBasedSurfaceModel();
-				while(Pos != line.length()){
-					if(line[Pos] == '#'){
+				while (Pos != line.length()){
+					if (line[Pos] == '#'){
 						Pos++;
-						while(Pos != line.length() && isdigit(line[Pos])){
+						while (Pos != line.length() && isdigit(line[Pos])){
 							shellNumber *= 10;
 							shellNumber += (line[Pos++] - '0');
 						}
@@ -2429,16 +2490,16 @@ void ReadIFCSHELLBASEDSURFACEMODEL(store *st, string file){
 void ReadIFCFACETEDBREP(store *st, string file){
 	ifstream in(file);
 	string line;
-	if(in){
-		while(getline(in, line)){
+	if (in){
+		while (getline(in, line)){
 			int Pos = 0, lineNumber;
-			if(line.empty())
+			if (line.empty())
 				continue;
-			else if(line[Pos] == '#'){
+			else if (line[Pos] == '#'){
 				Pos++;
 				lineNumber = line[Pos++] - '0';
-				while(Pos != line.length()){
-					if(isdigit(line[Pos])){
+				while (Pos != line.length()){
+					if (isdigit(line[Pos])){
 						lineNumber *= 10;
 						lineNumber += (line[Pos++] - '0');
 					}
@@ -2448,28 +2509,28 @@ void ReadIFCFACETEDBREP(store *st, string file){
 			}
 			else
 				continue;
-			if(isContain(line, "IFCFACETEDBREP"))
-				{
-					int shellNumber = 0;
-					FacetedBrep *fB = new FacetedBrep();
-					while(Pos != line.length()){
-						if(line[Pos] == '#'){
-							Pos++;
-							while(Pos != line.length() && isdigit(line[Pos])){
-								shellNumber *= 10;
-								shellNumber += (line[Pos++] - '0');
-							}
+			if (isContain(line, "IFCFACETEDBREP"))
+			{
+				int shellNumber = 0;
+				FacetedBrep *fB = new FacetedBrep();
+				while (Pos != line.length()){
+					if (line[Pos] == '#'){
+						Pos++;
+						while (Pos != line.length() && isdigit(line[Pos])){
+							shellNumber *= 10;
+							shellNumber += (line[Pos++] - '0');
 						}
-						else
-							Pos++;
 					}
-
-					fB->Shell = st->IFCCLOSEDSHELL_hash[shellNumber];
-					std::pair<int, string> fbpair1(lineNumber, "IFCFACETEDBREP");
-					std::pair<int, FacetedBrep *> fbpair2(lineNumber, fB);
-					st->Main_hash.insert(fbpair1);
-					st->IFCFACETEDBREP_hash.insert(fbpair2);
+					else
+						Pos++;
 				}
+
+				fB->Shell = st->IFCCLOSEDSHELL_hash[shellNumber];
+				std::pair<int, string> fbpair1(lineNumber, "IFCFACETEDBREP");
+				std::pair<int, FacetedBrep *> fbpair2(lineNumber, fB);
+				st->Main_hash.insert(fbpair1);
+				st->IFCFACETEDBREP_hash.insert(fbpair2);
+			}
 		}
 	}
 }
@@ -2477,16 +2538,16 @@ void ReadIFCFACETEDBREP(store *st, string file){
 void ReadIFCEXTRUDEDAREASOLID(store *st, string file){
 	ifstream in(file);
 	string line;
-	if(in){	
-		while(getline(in, line)){
+	if (in){
+		while (getline(in, line)){
 			int Pos = 0, lineNumber;
-			if(line.empty())
+			if (line.empty())
 				continue;
-			else if(line[Pos] == '#'){
+			else if (line[Pos] == '#'){
 				Pos++;
 				lineNumber = line[Pos++] - '0';
-				while(Pos != line.length()){
-					if(isdigit(line[Pos])){
+				while (Pos != line.length()){
+					if (isdigit(line[Pos])){
 						lineNumber *= 10;
 						lineNumber += (line[Pos++] - '0');
 					}
@@ -2496,7 +2557,7 @@ void ReadIFCEXTRUDEDAREASOLID(store *st, string file){
 			}
 			else
 				continue;
-			if(isContain(line, "IFCEXTRUDEDAREASOLID")){
+			if (isContain(line, "IFCEXTRUDEDAREASOLID")){
 				int decimalDigits = 0;
 				Axis2Placement3D *Axis = new Axis2Placement3D();
 				Direction *Dir = new Direction();
@@ -2504,28 +2565,28 @@ void ReadIFCEXTRUDEDAREASOLID(store *st, string file){
 				int LineNumber = 0, ParaNumbers = 0;
 				bool PositionDecimal = false;
 				AreaSolid *ASolid = new AreaSolid;
-				while(Pos != line.length()){
+				while (Pos != line.length()){
 					ArbitaryClosedProfile *Profile1 = new ArbitaryClosedProfile();
 					RectangleProfile *Profile2 = new RectangleProfile();
 					CircleProfile *Profile3 = new CircleProfile();
-					if(line[Pos] == '#'){
+					if (line[Pos] == '#'){
 						Pos++;
-						while(Pos != line.length() && isdigit(line[Pos])){
+						while (Pos != line.length() && isdigit(line[Pos])){
 							LineNumber *= 10;
 							LineNumber += (line[Pos++] - '0');
 						}
-						if(ParaNumbers == 0){
-							if(st->Main_hash[LineNumber] == "IFCARBITRARYCLOSEDPROFILEDEF"){
+						if (ParaNumbers == 0){
+							if (st->Main_hash[LineNumber] == "IFCARBITRARYCLOSEDPROFILEDEF"){
 								Profile1 = st->IFCARBITRARYCLOSEDPROFILEDEF_hash[LineNumber];
 								ASolid->ProfileMod = 0;
 								ASolid->Profile1 = Profile1;
 							}
-							else if(st->Main_hash[LineNumber] == "IFCRECTANGLEPROFILEDEF"){
-								Profile2 = st->IFCRECTANGLEPROFILEDEF_hash[LineNumber];		
+							else if (st->Main_hash[LineNumber] == "IFCRECTANGLEPROFILEDEF"){
+								Profile2 = st->IFCRECTANGLEPROFILEDEF_hash[LineNumber];
 								ASolid->ProfileMod = 1;
 								ASolid->Profile2 = Profile2;
 							}
-							else if(st->Main_hash[LineNumber] == "IFCCIRCLEPROFILEDEF"){
+							else if (st->Main_hash[LineNumber] == "IFCCIRCLEPROFILEDEF"){
 								Profile3 = st->IFCCIRCLEPROFILEDEF_hash[LineNumber];
 								ASolid->ProfileMod = 2;
 								ASolid->Profile3 = Profile3;
@@ -2534,7 +2595,7 @@ void ReadIFCEXTRUDEDAREASOLID(store *st, string file){
 								ASolid->ProfileMod = 9;
 							}
 						}
-						else if(ParaNumbers == 1){
+						else if (ParaNumbers == 1){
 							Axis = st->IFCAXIS2PLACEMENT3D_hash[LineNumber];
 							ASolid->Axis = Axis;
 						}
@@ -2545,10 +2606,10 @@ void ReadIFCEXTRUDEDAREASOLID(store *st, string file){
 						LineNumber = 0;
 						ParaNumbers++;
 					}
-					else if(Pos != line.length() && isdigit(line[Pos]) && ParaNumbers == 3){
-						while(Pos != line.length() && (isdigit(line[Pos]) || line[Pos] == '.')){
-							if(isdigit(line[Pos])){
-								if(!PositionDecimal){
+					else if (Pos != line.length() && isdigit(line[Pos]) && ParaNumbers == 3){
+						while (Pos != line.length() && (isdigit(line[Pos]) || line[Pos] == '.')){
+							if (isdigit(line[Pos])){
+								if (!PositionDecimal){
 									LineNumber *= 10;
 									LineNumber += (line[Pos++] - '0');
 								}
@@ -2586,16 +2647,16 @@ void ReadIFCEXTRUDEDAREASOLID(store *st, string file){
 void ReadIFCGEOMETRICREPRESENTATIONCONTEXT(store *st, string file){
 	ifstream in(file);
 	string line;
-	if(in){	
-		while(getline(in, line)){
+	if (in){
+		while (getline(in, line)){
 			int Pos = 0, lineNumber = 0;
-			if(line.empty())
+			if (line.empty())
 				continue;
-			else if(line[Pos] == '#'){
+			else if (line[Pos] == '#'){
 				Pos++;
 				lineNumber = line[Pos++] - '0';
-				while(Pos != line.length()){
-					if(isdigit(line[Pos])){
+				while (Pos != line.length()){
+					if (isdigit(line[Pos])){
 						lineNumber *= 10;
 						lineNumber += (line[Pos++] - '0');
 					}
@@ -2605,24 +2666,24 @@ void ReadIFCGEOMETRICREPRESENTATIONCONTEXT(store *st, string file){
 			}
 			else
 				continue;
-			if(isContain(line, "IFCGEOMETRICREPRESENTATIONCONTEXT")){
+			if (isContain(line, "IFCGEOMETRICREPRESENTATIONCONTEXT")){
 				int LineNumber = 0, ParaNumbers = 0;
 				Axis2Placement3D *Axis = new Axis2Placement3D();
 				Direction *Dir = new Direction();
 				GeometricRepresentationContext *GPC = new GeometricRepresentationContext();
 
-				while(Pos != line.length()){
-					if(line[Pos] == '#'){
+				while (Pos != line.length()){
+					if (line[Pos] == '#'){
 						Pos++;
-						while(Pos != line.length() && isdigit(line[Pos])){
+						while (Pos != line.length() && isdigit(line[Pos])){
 							LineNumber *= 10;
 							LineNumber += (line[Pos++] - '0');
 						}
-						if(ParaNumbers == 0){
+						if (ParaNumbers == 0){
 							Axis = st->IFCAXIS2PLACEMENT3D_hash[LineNumber];
 							GPC->Axis = Axis;
 						}
-						else if(ParaNumbers == 1){
+						else if (ParaNumbers == 1){
 							Dir = st->IFCDIRECTION_hash[LineNumber];
 							GPC->Dir = Dir;
 						}
@@ -2644,16 +2705,16 @@ void ReadIFCGEOMETRICREPRESENTATIONCONTEXT(store *st, string file){
 void ReadIFCGEOMETRICREPRESENTATIONSUBCONTEXT(store *st, string file){
 	ifstream in(file);
 	string line;
-	if(in){	
-		while(getline(in, line)){
+	if (in){
+		while (getline(in, line)){
 			int Pos = 0, lineNumber = 0;
-			if(line.empty())
+			if (line.empty())
 				continue;
-			else if(line[Pos] == '#'){
+			else if (line[Pos] == '#'){
 				Pos++;
 				lineNumber = line[Pos++] - '0';
-				while(Pos != line.length()){
-					if(isdigit(line[Pos])){
+				while (Pos != line.length()){
+					if (isdigit(line[Pos])){
 						lineNumber *= 10;
 						lineNumber += (line[Pos++] - '0');
 					}
@@ -2663,15 +2724,15 @@ void ReadIFCGEOMETRICREPRESENTATIONSUBCONTEXT(store *st, string file){
 			}
 			else
 				continue;
-			if(isContain(line, "IFCGEOMETRICREPRESENTATIONSUBCONTEXT")){
+			if (isContain(line, "IFCGEOMETRICREPRESENTATIONSUBCONTEXT")){
 				int LineNumber = 0;
 				GeometricRepresentationContext *GRC = new GeometricRepresentationContext();
 				GeometricRepresentationSubContext *GRSC = new GeometricRepresentationSubContext();
 
-				while(Pos != line.length()){
-					if(line[Pos] == '#'){
+				while (Pos != line.length()){
+					if (line[Pos] == '#'){
 						Pos++;
-						while(Pos != line.length() && isdigit(line[Pos])){
+						while (Pos != line.length() && isdigit(line[Pos])){
 							LineNumber *= 10;
 							LineNumber += (line[Pos++] - '0');
 						}
@@ -2694,16 +2755,16 @@ void ReadIFCGEOMETRICREPRESENTATIONSUBCONTEXT(store *st, string file){
 void ReadIFCSHAPEREPRESENTATION(store *st, string file){
 	ifstream in(file);
 	string line;
-	if(in){	
-		while(getline(in, line)){
+	if (in){
+		while (getline(in, line)){
 			int Pos = 0, lineNumber = 0;
-			if(line.empty())
+			if (line.empty())
 				continue;
-			else if(line[Pos] == '#'){
+			else if (line[Pos] == '#'){
 				Pos++;
 				lineNumber = line[Pos++] - '0';
-				while(Pos != line.length()){
-					if(isdigit(line[Pos])){
+				while (Pos != line.length()){
+					if (isdigit(line[Pos])){
 						lineNumber *= 10;
 						lineNumber += (line[Pos++] - '0');
 					}
@@ -2713,41 +2774,42 @@ void ReadIFCSHAPEREPRESENTATION(store *st, string file){
 			}
 			else
 				continue;
-			if(isContain(line, "IFCSHAPEREPRESENTATION")){
+			if (isContain(line, "IFCSHAPEREPRESENTATION")){
 				int Number = 0, ParaNumbers = 0;
 				ShapeRepresentation *sR = new ShapeRepresentation();
 				vector<AreaSolid *> aSolid;
 				aSolid.empty();
 				vector<FacetedBrep *> fBs;
 				fBs.empty();
-				while(Pos != line.length()){
+				while (Pos != line.length()){
 
 					GeometricRepresentationContext *GRC = new GeometricRepresentationContext();
 					GeometricRepresentationSubContext *GRSC = new GeometricRepresentationSubContext();
 					int GeometricMod = 0;
-					
+
 					PolyLine *pLine = new PolyLine();
+					GeometricCurveset *curveset = new GeometricCurveset();
 					ShellBasedSurfaceModel *model = new ShellBasedSurfaceModel();
-					
+
 					int ShapeMod = 0;
 
 					string cubeindex = "";
 
-					if(line[Pos] == '#'){
+					if (line[Pos] == '#'){
 						AreaSolid *solid = new AreaSolid();
 						FacetedBrep *fB = new FacetedBrep();
 						Pos++;
-						while(Pos != line.length() && isdigit(line[Pos])){
+						while (Pos != line.length() && isdigit(line[Pos])){
 							Number *= 10;
 							Number += (line[Pos++] - '0');
 						}
-						if(ParaNumbers == 0){
-							if(st->Main_hash[Number] == "IFCGEOMETRICREPRESENTATIONCONTEXT"){
+						if (ParaNumbers == 0){
+							if (st->Main_hash[Number] == "IFCGEOMETRICREPRESENTATIONCONTEXT"){
 								GRC = st->IFCGEOMETRICREPRESENTATIONCONTEXT_hash[Number];
 								sR->GeometricMod = 0;
 								sR->GRC = GRC;
 							}
-							else if(st->Main_hash[Number] == "IFCGEOMETRICREPRESENTATIONSUBCONTEXT"){
+							else if (st->Main_hash[Number] == "IFCGEOMETRICREPRESENTATIONSUBCONTEXT"){
 								GRSC = st->IFCGEOMETRICREPRESENTATIONSUBCONTEXT_hash[Number];
 								sR->GeometricMod = 1;
 								sR->GRSC = GRSC;
@@ -2757,26 +2819,31 @@ void ReadIFCSHAPEREPRESENTATION(store *st, string file){
 							}
 							ParaNumbers++;
 						}
-						else if(ParaNumbers == 1){
-							if(st->Main_hash[Number] == "IFCEXTRUDEDAREASOLID"){
+						else if (ParaNumbers == 1){
+							if (st->Main_hash[Number] == "IFCEXTRUDEDAREASOLID"){
 								solid = st->IFCEXTRUDEDAREASOLID_hash[Number];
 								aSolid.push_back(solid);
 								sR->ShapeMod = 0;
 							}
-							else if(st->Main_hash[Number] == "IFCPOLYLINE"){
+							else if (st->Main_hash[Number] == "IFCPOLYLINE"){
 								pLine = st->IFCPOLYLINE_hash[Number];
 								sR->pLine = pLine;
 								sR->ShapeMod = 1;
 							}
-							else if(st->Main_hash[Number] == "IFCFACETEDBREP"){
+							else if (st->Main_hash[Number] == "IFCFACETEDBREP"){
 								fB = st->IFCFACETEDBREP_hash[Number];
 								fBs.push_back(fB);
 								sR->ShapeMod = 2;
 							}
-							else if(st->Main_hash[Number] == "IFCSHELLBASEDSURFACEMODEL"){
+							else if (st->Main_hash[Number] == "IFCSHELLBASEDSURFACEMODEL"){
 								model = st->IFCSHELLBASEDSURFACEMODEL_hash[Number];
 								sR->model = model;
 								sR->ShapeMod = 3;
+							}
+							else if (st->Main_hash[Number] == "IFCGEOMETRICCURVESET"){
+								curveset = st->IFCGEOMETRICCURVESET_hash[Number];
+								sR->curveset = curveset;
+								sR->ShapeMod = 4;
 							}
 							else{
 								sR->ShapeMod = 9;
@@ -2788,7 +2855,7 @@ void ReadIFCSHAPEREPRESENTATION(store *st, string file){
 						Pos++;
 				}
 				sR->aSolid = aSolid;
-				sR->fBs= fBs;
+				sR->fBs = fBs;
 				std::pair<int, string> sppair1(lineNumber, "IFCSHAPEREPRESENTATION");
 				std::pair<int, ShapeRepresentation *> sppair2(lineNumber, sR);
 				st->Main_hash.insert(sppair1);
@@ -2822,7 +2889,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 
 	store *st = new store();
-	string file = "C:/Users/JLXU/Desktop/AC11-FZK-Haus-IFC.ifc";
+	string file = "D:/AC11-Institute-Var-2-IFC.ifc";
 	ReadIFCDIRECTION(st, file);
 	ReadIFCCARTESIANPOINT(st, file);
 	ReadIFCAXIS2PLACEMENT3D(st, file);
@@ -2830,6 +2897,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	ReadIFCAXIS2PLACEMENT2D(st, file);
 	ReadIFCLOCALPLACEMENT(st, file);
 	ReadIFCPOLYLINE(st, file);
+	ReadIFCGEOMETRICCURVESET(st, file);
 	ReadIFCPOLYLOOP(st, file);
 	ReadIFCARBITRARYCLOSEDPROFILEDEF(st, file);
 	ReadIFCRECTANGLEPROFILEDEF(st, file);
@@ -2852,13 +2920,18 @@ int _tmain(int argc, _TCHAR* argv[])
 	return 0;
 }
 
+// Next 1
+// IFCSHAPEREPRESENTATION check position add shapeMod: IFCGEOMETRICCURVESET
+
 // Next add IFCPOLYGONALBOUNDEDHALFSPACE
+// First Axis: Inclined surface
+// Second Axis: 2-D in First Axis(Doesn't incline)
 
 
 /* Problems
-	
-	1. Points may be used in different places.
-	2. Bounds cannot be calculated.
 
+1. Points may be used in different places.
+2. Bounds cannot be calculated.
+3. If 3D structs can be relocated?
 
 */
