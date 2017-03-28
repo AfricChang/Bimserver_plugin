@@ -1,4 +1,4 @@
-﻿// test.cpp : Defines the entry point for the console application.
+﻿﻿// test.cpp : Defines the entry point for the console application.
 //
 #include "stdafx.h"
 #include <iostream>
@@ -92,6 +92,20 @@ struct GeometricCurveset{
 
 	GeometricCurveset(){
 		pLine = new PolyLine();
+	}
+};
+
+struct PolygonalBoundHalfSpace{
+	Plane *plane;
+	Axis2Placement3D *axis;
+	PolyLine *pLine;
+	string cubeindex;
+
+	PolygonalBoundHalfSpace(){
+		plane = new Plane();
+		axis = new Axis2Placement3D();
+		pLine = new PolyLine();
+		cubeindex = "";
 	}
 };
 
@@ -312,6 +326,7 @@ struct store{
 	unordered_map<int, LocalPlacement *> IFCLOCALPLACEMENT_hash;
 	unordered_map<int, PolyLine *> IFCPOLYLINE_hash;
 	unordered_map<int, GeometricCurveset *> IFCGEOMETRICCURVESET_hash;
+	unordered_map<int, PolygonalBoundHalfSpace *> IFCPOLYGONALBOUNDHALFSPACE_hash;
 	unordered_map<int, PolyLoop *> IFCPOLYLOOP_hash;
 	unordered_map<int, ArbitaryClosedProfile *> IFCARBITRARYCLOSEDPROFILEDEF_hash;
 	unordered_map<int, RectangleProfile *> IFCRECTANGLEPROFILEDEF_hash;
@@ -340,6 +355,7 @@ struct store{
 		IFCLOCALPLACEMENT_hash.empty();
 		IFCPOLYLINE_hash.empty();
 		IFCGEOMETRICCURVESET_hash.empty();
+		IFCPOLYGONALBOUNDHALFSPACE_hash.empty();
 		IFCPOLYLOOP_hash.empty();
 		IFCARBITRARYCLOSEDPROFILEDEF_hash.empty();
 		IFCRECTANGLEPROFILEDEF_hash.empty();
@@ -652,6 +668,46 @@ void checkSinglePointPos(store *st){
 	for (unordered_map<int, CartesianPoint *>::iterator iter = st->IFCCARTESIANPOINT_hash.begin(); iter != st->IFCCARTESIANPOINT_hash.end(); iter++){
 		string binaryPos;
 		iter->second->cubeindex = checkSection(xMinPos, xMaxPos, yMinPos, yMaxPos, zMinPos, zMaxPos, iter->second->x, iter->second->y, iter->second->z, 0, binaryPos);
+	}
+}
+
+void checkPolygonalBoundedHalfSpace(store *st){
+	vector<CartesianPoint *> pnts;
+	for (unordered_map<int, PolygonalBoundHalfSpace *>::iterator iter1 = st->IFCPOLYGONALBOUNDHALFSPACE_hash.begin(); iter1 != st->IFCPOLYGONALBOUNDHALFSPACE_hash.end(); iter1++){
+		for (int i = 0; i != iter1->second->pLine->Points.size(); i++){
+			CartesianPoint *pnt = CountAbsCoordinate(iter1->second->plane->Axis->Directions1, iter1->second->plane->Axis->Directions2, iter1->second->pLine->Points[i]);
+			string binaryPos;
+			pnt->cubeindex = checkSection(st->xCoordinateMin, st->xCoordinateMax, st->yCoordinateMin, st->yCoordinateMax, st->zCoordinateMin, st->zCoordinateMax, pnt->x, pnt->y, pnt->z, 0, binaryPos);
+			iter1->second->pLine->Points[i] = pnt;
+			pnts.push_back(pnt);
+			}
+		
+		int atLayer = 3;
+		string Pos = pnts[0]->cubeindex;
+		for (vector<CartesianPoint *>::iterator iter2 = pnts.begin(); iter2 != pnts.end() && atLayer >= 1; iter2++){
+			if ((*iter2)->cubeindex.substr(0, atLayer) != Pos){
+				string Pos1 = (*iter2)->cubeindex.substr(0, atLayer - 1);
+				string Pos2 = Pos.substr(0, atLayer - 1);
+				if (Pos1 == Pos2){
+					Pos = Pos1;
+					atLayer--;
+				}
+				else{
+					Pos1 = (*iter2)->cubeindex.substr(0, atLayer - 2);
+					Pos2 = Pos.substr(0, atLayer - 2);
+					if (Pos1 == Pos2){
+						Pos = Pos1;
+						atLayer -= 2;
+					}
+					else{
+						Pos = Pos.substr(0, atLayer - 3);
+						break;
+					}
+				}
+			}
+		}
+		pnts.clear();
+		iter1->second->cubeindex = Pos;
 	}
 }
 
@@ -1072,7 +1128,7 @@ void checkAreaSolidPos(store *st){
 }
 
 // Doesn't adjust the coordinate according to the geometric context
-void checkShaperRepresentationPos(store *st){
+void checkShapeRepresentationPos(store *st){
 	int atLayer = 3;
 	//0 is AreaSolid, 1 is pLine, 2 is FacetedBrep, 3 is ShellBasedSurfaceModel, 4 is GeometricCurveset, 9 is unincluded Model
 	for (unordered_map<int, ShapeRepresentation *>::iterator iter = st->IFCSHAPEREPRESENTATION_hash.begin(); iter != st->IFCSHAPEREPRESENTATION_hash.end(); iter++){
@@ -1203,7 +1259,76 @@ void checkShaperRepresentationPos(store *st){
 			string Pos = iter->second->model->cubeindex;
 			iter->second->cubeindex = Pos;
 		}
-		else if (iter->second->ShapeMod == 4){
+		else if (iter->second->ShapeMod == 4){			
+			if (iter->second->GeometricMod == 0){
+				for (int i = 0; i != iter->second->curveset->pLine->Points.size(); i++){
+					CartesianPoint *pnt = CountAbsCoordinate(iter->second->GRC->Axis->Directions1, iter->second->GRC->Axis->Directions2, iter->second->curveset->pLine->Points[i]);
+
+					pnt->x += iter->second->GRC->Axis->originalPoint->x;
+					pnt->y += iter->second->GRC->Axis->originalPoint->y;
+					pnt->z += iter->second->GRC->Axis->originalPoint->z;
+
+					pnt->is3D = true;
+
+					st->xCoordinateMax = st->xCoordinateMax > pnt->x ? st->xCoordinateMax : pnt->x;
+					st->xCoordinateMin = st->xCoordinateMin < pnt->x ? st->xCoordinateMin : pnt->x;
+					st->yCoordinateMax = st->yCoordinateMax > pnt->y ? st->yCoordinateMax : pnt->y;
+					st->yCoordinateMin = st->yCoordinateMin < pnt->y ? st->yCoordinateMin : pnt->y;
+					st->zCoordinateMax = st->zCoordinateMax > pnt->z ? st->zCoordinateMax : pnt->z;
+					st->zCoordinateMin = st->zCoordinateMin < pnt->z ? st->zCoordinateMin : pnt->z;
+					string binaryPos;
+					pnt->cubeindex = checkSection(st->xCoordinateMin, st->xCoordinateMax, st->yCoordinateMin, st->yCoordinateMax, st->zCoordinateMin, st->zCoordinateMax, pnt->x, pnt->y, pnt->z, 0, binaryPos);
+
+					iter->second->curveset->pLine->Points[i] = pnt;
+				}
+
+			}
+			else if (iter->second->GeometricMod == 1){
+				for (int i = 0; i != iter->second->curveset->pLine->Points.size(); i++){
+					CartesianPoint *pnt = CountAbsCoordinate(iter->second->GRSC->GRC->Axis->Directions1, iter->second->GRSC->GRC->Axis->Directions2, iter->second->curveset->pLine->Points[i]);
+
+					pnt->x += iter->second->GRSC->GRC->Axis->originalPoint->x;
+					pnt->y += iter->second->GRSC->GRC->Axis->originalPoint->y;
+					pnt->z += iter->second->GRSC->GRC->Axis->originalPoint->z;
+
+					pnt->is3D = true;
+
+					st->xCoordinateMax = st->xCoordinateMax > pnt->x ? st->xCoordinateMax : pnt->x;
+					st->xCoordinateMin = st->xCoordinateMin < pnt->x ? st->xCoordinateMin : pnt->x;
+					st->yCoordinateMax = st->yCoordinateMax > pnt->y ? st->yCoordinateMax : pnt->y;
+					st->yCoordinateMin = st->yCoordinateMin < pnt->y ? st->yCoordinateMin : pnt->y;
+					st->zCoordinateMax = st->zCoordinateMax > pnt->z ? st->zCoordinateMax : pnt->z;
+					st->zCoordinateMin = st->zCoordinateMin < pnt->z ? st->zCoordinateMin : pnt->z;
+					string binaryPos;
+					pnt->cubeindex = checkSection(st->xCoordinateMin, st->xCoordinateMax, st->yCoordinateMin, st->yCoordinateMax, st->zCoordinateMin, st->zCoordinateMax, pnt->x, pnt->y, pnt->z, 0, binaryPos);
+
+					iter->second->curveset->pLine->Points[i] = pnt;
+				}
+			}
+			string Pos = iter->second->curveset->pLine->Points[0]->cubeindex;
+			for (int i = 0; i != iter->second->curveset->pLine->Points.size(); i++){
+				if (iter->second->curveset->pLine->Points[i]->cubeindex != Pos){
+					string Pos1 = iter->second->curveset->pLine->Points[i]->cubeindex.substr(0, atLayer - 1);
+					string Pos2 = Pos.substr(0, atLayer - 1);
+					if (Pos1 == Pos2){
+						Pos = Pos1;
+						atLayer--;
+					}
+					else{
+						Pos1 = iter->second->curveset->pLine->Points[i]->cubeindex.substr(0, atLayer - 2);
+						Pos2 = Pos.substr(0, atLayer - 2);
+						if (Pos1 == Pos2){
+							Pos = Pos1;
+							atLayer -= 2;
+						}
+						else{
+							Pos = Pos.substr(0, atLayer - 3);
+							break;
+						}
+					}
+				}
+			}
+			iter->second->cubeindex = Pos;
 		}
 		else{
 		}
@@ -1215,6 +1340,7 @@ void checkPositions(store *st){
 	checkAreaSolidPointsBound(st);
 	checkSinglePointPos(st);
 	checkAreaSolidPos(st);
+	checkPolygonalBoundedHalfSpace(st);
 	checkPolyLoopPos(st);
 	checkFaceBoundPos(st);
 	checkFaceOuterBoundPos(st);
@@ -1223,7 +1349,7 @@ void checkPositions(store *st){
 	checkClosedShellPos(st);
 	checkShellBasedSurfaceModelPos(st);
 	checkFacetedBrepPos(st);
-	checkShaperRepresentationPos(st);
+	checkShapeRepresentationPos(st);
 }
 
 void ReadIFCDIRECTION(store *st, string file){
@@ -1842,6 +1968,70 @@ void ReadIFCGEOMETRICCURVESET(store *st, string file){
 				std::pair<int, GeometricCurveset *> cppair2(lineNumber, curveset);
 				st->Main_hash.insert(cppair1);
 				st->IFCGEOMETRICCURVESET_hash.insert(cppair2);
+			}
+		}
+	}
+}
+
+void ReadIFCPOLYGONALBOUNDEDHALFSPACE(store *st, string file){
+	ifstream in(file);
+	string line;
+	if (in){
+		while (getline(in, line)){
+			int Pos = 0, lineNumber;
+			if (line.empty())
+				continue;
+			else if (line[Pos] == '#'){
+				Pos++;
+				lineNumber = line[Pos++] - '0';
+				while (Pos != line.length()){
+					if (isdigit(line[Pos])){
+						lineNumber *= 10;
+						lineNumber += (line[Pos++] - '0');
+					}
+					else
+						break;
+				}
+			}
+			else
+				continue;
+			if (isContain(line, "IFCPOLYGONALBOUNDEDHALFSPACE")){
+				Plane *plane = new Plane();
+				Axis2Placement3D *axis = new Axis2Placement3D();
+				PolyLine *pLine = new PolyLine;
+				PolygonalBoundHalfSpace *PBHS = new PolygonalBoundHalfSpace();
+
+				int LineNumber = 0, ParaNumbers = 0;
+
+				while (Pos != line.length()){
+					if (line[Pos] == '#'){
+						Pos++;
+						while (Pos != line.length() && isdigit(line[Pos])){
+							LineNumber *= 10;
+							LineNumber += (line[Pos++] - '0');
+						}
+						if (ParaNumbers == 0){
+							plane = st->IFCPLANE_hash[LineNumber];
+							PBHS->plane = plane;
+						}
+						else if (ParaNumbers == 1){
+							axis = st->IFCAXIS2PLACEMENT3D_hash[LineNumber];
+							PBHS->axis = axis;
+						}
+						else{
+							pLine = st->IFCPOLYLINE_hash[LineNumber];
+							PBHS->pLine = pLine;
+						}
+						LineNumber = 0;
+						ParaNumbers++;
+					}
+					else
+						Pos++;
+				}
+				std::pair<int, string> easpair1(lineNumber, "IFCPOLYGONALBOUNDEDHALFSPACE");
+				std::pair<int, PolygonalBoundHalfSpace *> easpair2(lineNumber, PBHS);
+				st->Main_hash.insert(easpair1);
+				st->IFCPOLYGONALBOUNDHALFSPACE_hash.insert(easpair2);
 			}
 		}
 	}
@@ -2889,7 +3079,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 
 	store *st = new store();
-	string file = "D:/AC11-Institute-Var-2-IFC.ifc";
+	string file = "C:/Users/JLXU/Desktop/AC11-Institute-Var-2-IFC.ifc";
 	ReadIFCDIRECTION(st, file);
 	ReadIFCCARTESIANPOINT(st, file);
 	ReadIFCAXIS2PLACEMENT3D(st, file);
@@ -2898,6 +3088,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	ReadIFCLOCALPLACEMENT(st, file);
 	ReadIFCPOLYLINE(st, file);
 	ReadIFCGEOMETRICCURVESET(st, file);
+	ReadIFCPOLYGONALBOUNDEDHALFSPACE(st, file);
 	ReadIFCPOLYLOOP(st, file);
 	ReadIFCARBITRARYCLOSEDPROFILEDEF(st, file);
 	ReadIFCRECTANGLEPROFILEDEF(st, file);
@@ -2919,14 +3110,6 @@ int _tmain(int argc, _TCHAR* argv[])
 	//cout << c.IFCPOLYLOOP_hash[68][1] << endl;
 	return 0;
 }
-
-// Next 1
-// IFCSHAPEREPRESENTATION check position add shapeMod: IFCGEOMETRICCURVESET
-
-// Next add IFCPOLYGONALBOUNDEDHALFSPACE
-// First Axis: Inclined surface
-// Second Axis: 2-D in First Axis(Doesn't incline)
-
 
 /* Problems
 
