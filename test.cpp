@@ -1,4 +1,4 @@
-﻿﻿// test.cpp : Defines the entry point for the console application.
+﻿// test.cpp : Defines the entry point for the console application.
 //
 #include "stdafx.h"
 #include <iostream>
@@ -289,6 +289,7 @@ struct GeometricRepresentationSubContext{
 struct ShapeRepresentation{
 	GeometricRepresentationContext *GRC;
 	GeometricRepresentationSubContext *GRSC;
+	int ShapeMod;	// 0 is AreaSolid, 1 is pLine, 2 is FacetedBrep, 3 is ShellBasedSurfaceModel, 4 is GeometricCurveset, 9 is unincluded Model, 21 is BooleanClippingResult
 	int GeometricMod;	// 0 is GeometricRepresentationContext, 1 is GeometricRepresentationSubContext, 9 is unincluded Model
 
 
@@ -297,20 +298,20 @@ struct ShapeRepresentation{
 	GeometricCurveset *curveset;
 	vector<FacetedBrep *> fBs;
 	ShellBasedSurfaceModel *model;
-	int ShapeMod;	// 0 is AreaSolid, 1 is pLine, 2 is FacetedBrep, 3 is ShellBasedSurfaceModel, 4 is GeometricCurveset, 9 is unincluded Model
+	// Boolean Mods don't have cubeindex
 
 	string cubeindex;
 
 	ShapeRepresentation(){
 		GRC = new GeometricRepresentationContext;
 		GRSC = new GeometricRepresentationSubContext;
+		ShapeMod = 0;
 		GeometricMod = 0;
 		aSolid.empty();
 		pLine = new PolyLine;
 		curveset = new GeometricCurveset;
 		model = new ShellBasedSurfaceModel;
 		fBs.empty();
-		ShapeMod = 0;
 		cubeindex = "";
 	}
 
@@ -1130,7 +1131,7 @@ void checkAreaSolidPos(store *st){
 // Doesn't adjust the coordinate according to the geometric context
 void checkShapeRepresentationPos(store *st){
 	int atLayer = 3;
-	//0 is AreaSolid, 1 is pLine, 2 is FacetedBrep, 3 is ShellBasedSurfaceModel, 4 is GeometricCurveset, 9 is unincluded Model
+	//0 is AreaSolid, 1 is pLine, 2 is FacetedBrep, 3 is ShellBasedSurfaceModel, 4 is GeometricCurveset, 9 is unincluded Model, 21 is BooleanClippingResult
 	for (unordered_map<int, ShapeRepresentation *>::iterator iter = st->IFCSHAPEREPRESENTATION_hash.begin(); iter != st->IFCSHAPEREPRESENTATION_hash.end(); iter++){
 		if (iter->second->ShapeMod == 0){
 			string Pos = iter->second->aSolid[0]->cubeindex;
@@ -1455,6 +1456,7 @@ void ReadIFCDIRECTION(store *st, string file){
 	}
 	else
 		cout << "no such file" << endl;
+	in.close();
 }
 
 void ReadIFCAXIS2PLACEMENT3D(store *st, string file){
@@ -1542,6 +1544,7 @@ void ReadIFCAXIS2PLACEMENT3D(store *st, string file){
 			}
 		}
 	}
+	in.close();
 }
 
 void ReadIFCPLANE(store *st, string file){
@@ -1589,6 +1592,7 @@ void ReadIFCPLANE(store *st, string file){
 			}
 		}
 	}
+	in.close();
 }
 
 void ReadIFCAXIS2PLACEMENT2D(store *st, string file){
@@ -1681,6 +1685,7 @@ void ReadIFCAXIS2PLACEMENT2D(store *st, string file){
 			}
 		}
 	}
+	in.close();
 }
 
 void ReadIFCLOCALPLACEMENT(store *st, string file){
@@ -1771,6 +1776,7 @@ void ReadIFCLOCALPLACEMENT(store *st, string file){
 			}
 		}
 	}
+	in.close();
 }
 
 void ReadIFCCARTESIANPOINT(store *st, string file){
@@ -1871,6 +1877,7 @@ void ReadIFCCARTESIANPOINT(store *st, string file){
 	}
 	else
 		cout << "no such file" << endl;
+	in.close();
 }
 
 void ReadIFCPOLYLINE(store *st, string file){
@@ -1924,6 +1931,7 @@ void ReadIFCPOLYLINE(store *st, string file){
 			}
 		}
 	}
+	in.close();
 }
 
 void ReadIFCGEOMETRICCURVESET(store *st, string file){
@@ -1971,6 +1979,7 @@ void ReadIFCGEOMETRICCURVESET(store *st, string file){
 			}
 		}
 	}
+	in.close();
 }
 
 void ReadIFCPOLYGONALBOUNDEDHALFSPACE(store *st, string file){
@@ -2035,6 +2044,7 @@ void ReadIFCPOLYGONALBOUNDEDHALFSPACE(store *st, string file){
 			}
 		}
 	}
+	in.close();
 }
 
 void ReadIFCPOLYLOOP(store *st, string file){
@@ -2086,6 +2096,7 @@ void ReadIFCPOLYLOOP(store *st, string file){
 			}
 		}
 	}
+	in.close();
 }
 
 void ReadIFCARBITRARYCLOSEDPROFILEDEF(store *st, string file){
@@ -2136,6 +2147,7 @@ void ReadIFCARBITRARYCLOSEDPROFILEDEF(store *st, string file){
 			}
 		}
 	}
+	in.close();
 }
 
 void ReadIFCRECTANGLEPROFILEDEF(store *st, string file){
@@ -2261,6 +2273,7 @@ void ReadIFCRECTANGLEPROFILEDEF(store *st, string file){
 			}
 		}
 	}
+	in.close();
 }
 
 void ReadIFCCIRCLEPROFILEDEF(store *st, string file){
@@ -2367,6 +2380,7 @@ void ReadIFCCIRCLEPROFILEDEF(store *st, string file){
 			}
 		}
 	}
+	in.close();
 }
 
 void ReadIFCFACEBOUND(store *st, string file){
@@ -2414,6 +2428,7 @@ void ReadIFCFACEBOUND(store *st, string file){
 			}
 		}
 	}
+	in.close();
 }
 
 void ReadIFCFACEOUTERBOUND(store *st, string file){
@@ -2462,6 +2477,7 @@ void ReadIFCFACEOUTERBOUND(store *st, string file){
 			}
 		}
 	}
+	in.close();
 }
 
 void ReadIFCFACE(store *st, string file){
@@ -2522,6 +2538,7 @@ void ReadIFCFACE(store *st, string file){
 			}
 		}
 	}
+	in.close();
 }
 
 void ReadIFCOPENSHELL(store *st, string file){
@@ -2572,6 +2589,7 @@ void ReadIFCOPENSHELL(store *st, string file){
 			}
 		}
 	}
+	in.close();
 }
 
 void ReadIFCCLOSEDSHELL(store *st, string file){
@@ -2625,6 +2643,7 @@ void ReadIFCCLOSEDSHELL(store *st, string file){
 			}
 		}
 	}
+	in.close();
 }
 
 void ReadIFCSHELLBASEDSURFACEMODEL(store *st, string file){
@@ -2675,6 +2694,7 @@ void ReadIFCSHELLBASEDSURFACEMODEL(store *st, string file){
 			}
 		}
 	}
+	in.close();
 }
 
 void ReadIFCFACETEDBREP(store *st, string file){
@@ -2723,6 +2743,7 @@ void ReadIFCFACETEDBREP(store *st, string file){
 			}
 		}
 	}
+	in.close();
 }
 
 void ReadIFCEXTRUDEDAREASOLID(store *st, string file){
@@ -2832,6 +2853,7 @@ void ReadIFCEXTRUDEDAREASOLID(store *st, string file){
 			}
 		}
 	}
+	in.close();
 }
 
 void ReadIFCGEOMETRICREPRESENTATIONCONTEXT(store *st, string file){
@@ -2890,6 +2912,7 @@ void ReadIFCGEOMETRICREPRESENTATIONCONTEXT(store *st, string file){
 			}
 		}
 	}
+	in.close();
 }
 
 void ReadIFCGEOMETRICREPRESENTATIONSUBCONTEXT(store *st, string file){
@@ -2940,6 +2963,7 @@ void ReadIFCGEOMETRICREPRESENTATIONSUBCONTEXT(store *st, string file){
 			}
 		}
 	}
+	in.close();
 }
 
 void ReadIFCSHAPEREPRESENTATION(store *st, string file){
@@ -3035,6 +3059,9 @@ void ReadIFCSHAPEREPRESENTATION(store *st, string file){
 								sR->curveset = curveset;
 								sR->ShapeMod = 4;
 							}
+							else if (st->Main_hash[Number] == "IFCBOOLEANCLIPPINGRESULT"){
+								sR->ShapeMod = 21;
+							}
 							else{
 								sR->ShapeMod = 9;
 							}
@@ -3053,33 +3080,150 @@ void ReadIFCSHAPEREPRESENTATION(store *st, string file){
 			}
 		}
 	}
+	in.close();
 }
 
-
-// Finish ReadIFCSHAPEREPRESENTATION
+void OutputLocation(store *st, string folder){
+	for(unordered_map<int, CartesianPoint *>::iterator iter = st->IFCCARTESIANPOINT_hash.begin(); iter != st->IFCCARTESIANPOINT_hash.end(); iter++){
+		string file = folder + "/" + iter->second->cubeindex + ".txt";
+		fstream out;
+		out.open(file, ios::out|ios::app);
+		if(!out){
+			cout << "open file failure" << endl;
+			return;
+		}
+		out << iter->first << endl;
+		out.close();
+	}
+	for(unordered_map<int, AreaSolid *>::iterator iter = st->IFCEXTRUDEDAREASOLID_hash.begin(); iter != st->IFCEXTRUDEDAREASOLID_hash.end(); iter++){
+		string file = folder + "/" + iter->second->cubeindex + ".txt";
+		fstream out;
+		out.open(file, ios::out|ios::app);
+		if(!out){
+			cout << "open file failure" << endl;
+			return;
+		}
+		out << iter->first << endl;
+		out.close();
+	}
+	for(unordered_map<int, PolygonalBoundHalfSpace *>::iterator iter = st->IFCPOLYGONALBOUNDHALFSPACE_hash.begin(); iter != st->IFCPOLYGONALBOUNDHALFSPACE_hash.end(); iter++){
+		string file = folder + "/" + iter->second->cubeindex + ".txt";
+		fstream out;
+		out.open(file, ios::out|ios::app);
+		if(!out){
+			cout << "open file failure" << endl;
+			return;
+		}
+		out << iter->first << endl;
+		out.close();
+	}
+	for(unordered_map<int, PolyLoop *>::iterator iter = st->IFCPOLYLOOP_hash.begin(); iter != st->IFCPOLYLOOP_hash.end(); iter++){
+		string file = folder + "/" + iter->second->cubeindex + ".txt";
+		fstream out;
+		out.open(file, ios::out|ios::app);
+		if(!out){
+			cout << "open file failure" << endl;
+			return;
+		}
+		out << iter->first << endl;
+		out.close();
+	}
+	for(unordered_map<int, FaceBound *>::iterator iter = st->IFCFACEBOUND_hash.begin(); iter != st->IFCFACEBOUND_hash.end(); iter++){
+		string file = folder + "/" + iter->second->cubeindex + ".txt";
+		fstream out;
+		out.open(file, ios::out|ios::app);
+		if(!out){
+			cout << "open file failure" << endl;
+			return;
+		}
+		out << iter->first << endl;
+		out.close();
+	}
+	for(unordered_map<int, FaceOuterBound *>::iterator iter = st->IFCFACEOUTERBOUND_hash.begin(); iter != st->IFCFACEOUTERBOUND_hash.end(); iter++){
+		string file = folder + "/" + iter->second->cubeindex + ".txt";
+		fstream out;
+		out.open(file, ios::out|ios::app);
+		if(!out){
+			cout << "open file failure" << endl;
+			return;
+		}
+		out << iter->first << endl;
+		out.close();
+	}
+	for(unordered_map<int, Face *>::iterator iter = st->IFCFACE_hash.begin(); iter != st->IFCFACE_hash.end(); iter++){
+		string file = folder + "/" + iter->second->cubeindex + ".txt";
+		fstream out;
+		out.open(file, ios::out|ios::app);
+		if(!out){
+			cout << "open file failure" << endl;
+			return;
+		}
+		out << iter->first << endl;
+		out.close();
+	}
+	for(unordered_map<int, OpenShell *>::iterator iter = st->IFCOPENSHELL_hash.begin(); iter != st->IFCOPENSHELL_hash.end(); iter++){
+		string file = folder + "/" + iter->second->cubeindex + ".txt";
+		fstream out;
+		out.open(file, ios::out|ios::app);
+		if(!out){
+			cout << "open file failure" << endl;
+			return;
+		}
+		out << iter->first << endl;
+		out.close();
+	}
+	for(unordered_map<int, ClosedShell *>::iterator iter = st->IFCCLOSEDSHELL_hash.begin(); iter != st->IFCCLOSEDSHELL_hash.end(); iter++){
+		string file = folder + "/" + iter->second->cubeindex + ".txt";
+		fstream out;
+		out.open(file, ios::out|ios::app);
+		if(!out){
+			cout << "open file failure" << endl;
+			return;
+		}
+		out << iter->first << endl;
+		out.close();
+	}
+	for(unordered_map<int, ShellBasedSurfaceModel *>::iterator iter = st->IFCSHELLBASEDSURFACEMODEL_hash.begin(); iter != st->IFCSHELLBASEDSURFACEMODEL_hash.end(); iter++){
+		string file = folder + "/" + iter->second->cubeindex + ".txt";
+		fstream out;
+		out.open(file, ios::out|ios::app);
+		if(!out){
+			cout << "open file failure" << endl;
+			return;
+		}
+		out << iter->first << endl;
+		out.close();
+	}
+	for(unordered_map<int, FacetedBrep *>::iterator iter = st->IFCFACETEDBREP_hash.begin(); iter != st->IFCFACETEDBREP_hash.end(); iter++){
+		string file = folder + "/" + iter->second->cubeindex + ".txt";
+		fstream out;
+		out.open(file, ios::out|ios::app);
+		if(!out){
+			cout << "open file failure" << endl;
+			return;
+		}
+		out << iter->first << endl;
+		out.close();
+	}
+	for(unordered_map<int, ShapeRepresentation *>::iterator iter = st->IFCSHAPEREPRESENTATION_hash.begin(); iter != st->IFCSHAPEREPRESENTATION_hash.end(); iter++){
+		string file = folder + "/" + iter->second->cubeindex + ".txt";
+		fstream out;
+		out.open(file, ios::out|ios::app);
+		if(!out){
+			cout << "open file failure" << endl;
+			return;
+		}
+		out << iter->first << endl;
+		out.close();
+	}
+	return;
+}
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-	int I = 0;
-	char *c = "Hello";
-	vector<char **> vc;
-	vc.push_back(&c);
-	c = "World";
-	cout << *vc[0] << endl;
-
-	vector<CartesianPoint *> P;
-	CartesianPoint p;
-	p.x = 1, p.y = 2, p.z = 3, p.is3D = true, p.cubeindex = "666";
-	P.push_back(&p);
-	p.x = 3, p.y = 4, p.z = 5;
-	string S = P[0]->cubeindex;
-	cout << P[0]->cubeindex << endl;
-	//cout << *P[0].x << endl;
-	//cout << &P[0].x << endl;
-
-
 	store *st = new store();
-	string file = "C:/Users/JLXU/Desktop/AC11-Institute-Var-2-IFC.ifc";
+	string file = "C:/Users/JLXU/Desktop/AC11-FZK-Haus-IFC.ifc";
+	string outputPath = "C:/Users/JLXU/Documents/output";
 	ReadIFCDIRECTION(st, file);
 	ReadIFCCARTESIANPOINT(st, file);
 	ReadIFCAXIS2PLACEMENT3D(st, file);
@@ -3105,11 +3249,14 @@ int _tmain(int argc, _TCHAR* argv[])
 	ReadIFCGEOMETRICREPRESENTATIONSUBCONTEXT(st, file);
 	ReadIFCSHAPEREPRESENTATION(st, file);
 	checkPositions(st);
+	OutputLocation(st, outputPath);
 	//string s = "Hello";
 	//cout << s.substr(0, 2) << endl;
 	//cout << c.IFCPOLYLOOP_hash[68][1] << endl;
 	return 0;
 }
+
+// Next IFCBOOLEANCLIPPINGRESULT
 
 /* Problems
 
